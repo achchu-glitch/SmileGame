@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smile Game – Sign in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f0f12;
+      --surface: #18181c;
+      --surface-elevated: #1f1f24;
+      --border: #2a2a32;
+      --border-focus: #3b82f6;
+      --text: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-subtle: rgba(59, 130, 246, 0.12);
+      --error: #ef4444;
+      --error-bg: rgba(239, 68, 68, 0.1);
+      --success: #22c55e;
+      --success-bg: rgba(34, 197, 94, 0.1);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.15);
+      --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Subtle grid background */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+    }
+
+    .card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      padding: 2.5rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      width: 100%;
+      max-width: 400px;
+    }
+    .card:has(#game-area.visible) {
+      min-height: 520px;
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+    .brand-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 1rem;
+      background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .brand p {
+      margin: 0.35rem 0 0;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    #form-message {
+      display: none;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      margin-bottom: 1.25rem;
+      line-height: 1.4;
+    }
+    #form-message.error {
+      color: var(--error);
+      background: var(--error-bg);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+    #form-message.success {
+      color: var(--success);
+      background: var(--success-bg);
+      border: 1px solid rgba(34, 197, 94, 0.25);
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.01em;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface-elevated);
+      color: var(--text);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .form-group input::placeholder {
+      color: var(--text-muted);
+      opacity: 0.8;
+    }
+    .form-group input:hover {
+      border-color: #35353e;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px var(--accent-subtle);
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      margin-top: 0.25rem;
+      transition: background 0.15s ease, transform 0.05s ease;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+    .btn-primary:active:not(:disabled) {
+      transform: scale(0.99);
+    }
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .divider::before,
+    .divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+    .divider span {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .toggle-mode {
+      text-align: center;
+    }
+    .toggle-mode a {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--accent);
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+    .toggle-mode a:hover {
+      color: #60a5fa;
+    }
+
+    /* Game / welcome area */
+    #game-area {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      text-align: center;
+    }
+    #game-area.visible {
+      display: flex;
+    }
+    #game-area .game-area-footer {
+      margin-top: auto;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    #game-area .game-area-footer .user-email {
+      margin: 0;
+      order: 1;
+    }
+    .game-area-footer-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .profile-settings-panel {
+      width: 100%;
+      max-width: 280px;
+      text-align: left;
+      padding: 1rem 0;
+    }
+    .profile-settings-panel .form-group {
+      margin-bottom: 0.75rem;
+    }
+    .profile-settings-panel .form-group input {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface-elevated);
+      color: var(--text);
+    }
+    .profile-settings-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    #game-area .brand-icon {
+      margin-bottom: 1rem;
+    }
+    #game-area h1 {
+      margin: 0 0 0.5rem;
+      font-size: 1.375rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    #game-area .user-email {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin: 0 0 1rem;
+    }
+    #game-area .user-email strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .game-question {
+      font-size: 0.9375rem;
+      color: var(--text-muted);
+      margin: 0 0 0.75rem;
+      font-weight: 500;
+    }
+    #game-image-wrap {
+      min-height: 138px;
+      margin: 1.15rem 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-elevated);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      transition: box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+    }
+    #game-image-wrap.puzzle-correct-flash {
+      animation: puzzleCorrectFlash 0.5s ease;
+    }
+    @keyframes puzzleCorrectFlash {
+      0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); border-color: var(--success); }
+      50% { box-shadow: 0 0 20px 4px rgba(34, 197, 94, 0.35); }
+      100% { box-shadow: none; border-color: var(--border); }
+    }
+    #game-image-wrap img {
+      max-width: 100%;
+      max-height: 230px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+    #game-image-placeholder {
+      font-size: 3.25rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+    #game-image-wrap:has(#game-image-placeholder:not(.hidden)) {
+      display: flex;
+    }
+    #game-score {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--success);
+      margin: 0 0 1rem;
+      transition: transform 0.2s ease;
+    }
+    #game-score.score-bump {
+      animation: scoreBump 0.35s ease;
+    }
+    @keyframes scoreBump {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.12); }
+      100% { transform: scale(1); }
+    }
+    #game-feedback {
+      min-height: 1.75em;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      transition: opacity 0.2s ease;
+    }
+    #game-feedback:empty {
+      margin-bottom: 0;
+      min-height: 0;
+    }
+    #game-feedback.correct {
+      color: var(--success);
+    }
+    #game-feedback.wrong {
+      color: var(--error);
+    }
+    .game-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 1.25rem;
+    }
+    .game-buttons button {
+      width: 48px;
+      height: 48px;
+      padding: 0;
+      font-size: 1.2rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .game-buttons button:hover {
+      transform: scale(1.08);
+      background: #1e1e24;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+    }
+    .game-buttons button:active {
+      transform: scale(0.98);
+    }
+    .btn-secondary {
+      padding: 0.625rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--text-muted);
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    .btn-secondary:hover {
+      background: #25252d;
+      color: var(--text);
+      border-color: #35353e;
+    }
+
+    .social-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .btn-google, .btn-phone {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      font-family: inherit;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface-elevated);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .btn-google .btn-icon, .btn-phone .btn-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-google .btn-icon svg, .btn-phone .btn-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+    .btn-google:hover, .btn-phone:hover {
+      background: #25252d;
+      border-color: #3a3a42;
+    }
+    .phone-auth {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .phone-auth.hidden { display: none !important; }
+    .phone-hint { font-size: 0.75rem; color: var(--text-muted); margin: 0 0 0.75rem 0; line-height: 1.4; }
+    .hidden { display: none !important; }
+    #recaptcha-phone-container {
+      margin: 1rem 0;
+      min-height: 78px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #recaptcha-phone-container:empty {
+      min-height: 0;
+    }
+
+    #login-form.hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="login-form">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">😊</div>
+        <h1>Smile Game</h1>
+        <p>Sign in to continue</p>
+      </div>
+      <p id="form-message" class="error" aria-live="polite" role="alert"></p>
+      <form id="auth-form">
+        <div class="form-group">
+          <label for="email">Email address</label>
+          <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com" />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="••••••••" />
+        </div>
+        <div id="signup-name-wrap" class="hidden">
+          <div class="form-group">
+            <label for="display-name-signup">Display name (optional)</label>
+            <input type="text" id="display-name-signup" placeholder="Your name" autocomplete="name" />
+          </div>
+        </div>
+        <button type="submit" id="submit-btn" class="btn-primary">Login</button>
+      </form>
+      <div id="social-signin-section">
+        <div class="divider"><span>or</span></div>
+        <div class="social-buttons">
+          <button type="button" id="google-btn" class="btn-google">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+          </span>
+          Continue with Google
+        </button>
+        <button type="button" id="phone-btn" class="btn-phone">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </span>
+          Continue with Phone
+        </button>
+        </div>
+      </div>
+      <div id="phone-auth-section" class="phone-auth hidden">
+        <div class="divider"><span>Enter your phone number</span></div>
+        <div class="form-group">
+          <label for="phone">Phone (include country code, e.g. +1 2345678900 or +94 712345678)</label>
+          <input type="tel" id="phone" placeholder="+94 712345678" autocomplete="tel" />
+        </div>
+        <p class="phone-hint">Use international format. Add test numbers in Firebase Console (Phone → Phone numbers for testing) to test without SMS.</p>
+        <div id="recaptcha-phone-container"></div>
+        <button type="button" id="send-code-btn" class="btn-primary">Send verification code</button>
+        <div id="phone-code-section" class="hidden">
+          <div class="form-group">
+            <label for="phone-code">Verification code</label>
+            <input type="text" id="phone-code" placeholder="123456" maxlength="6" />
+          </div>
+          <button type="button" id="verify-code-btn" class="btn-primary">Verify and sign in</button>
+        </div>
+        <button type="button" id="phone-cancel-btn" class="btn-secondary" style="margin-top: 8px;">Cancel</button>
+      </div>
+      <div class="toggle-mode">
+        <a href="#" id="toggle-mode">Create an account</a>
+      </div>
+    </div>
+    <div id="game-area">
+      <div class="brand-icon" aria-hidden="true">😊</div>
+      <h1 id="welcome-heading">Welcome back</h1>
+      <p class="game-question">What is the missing value?</p>
+      <div id="game-image-wrap">
+        <img id="game-image" src="" alt="Equation" />
+        <span id="game-image-placeholder" class="hidden" aria-hidden="true">?</span>
+      </div>
+      <p id="game-score">Score: 0</p>
+      <p id="game-feedback" aria-live="polite"></p>
+      <div class="game-buttons" id="game-buttons"></div>
+      <div class="game-area-footer">
+        <p class="user-email">Signed in as <strong id="user-email"></strong></p>
+        <div id="profile-settings" class="hidden profile-settings-panel">
+          <div class="form-group">
+            <label for="profile-display-name">Display name</label>
+            <input type="text" id="profile-display-name" placeholder="Your name" autocomplete="name" />
+          </div>
+          <div class="profile-settings-buttons">
+            <button type="button" id="profile-save-btn" class="btn-primary">Save</button>
+            <button type="button" id="profile-cancel-btn" class="btn-secondary">Cancel</button>
+          </div>
+        </div>
+        <div class="game-area-footer-actions">
+          <button type="button" id="profile-btn" class="btn-secondary">Profile</button>
+          <button type="button" id="logout-btn" class="btn-secondary">Sign out</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      if (window.location.protocol === "file:") {
+        document.body.innerHTML = "<div style='font-family: system-ui; max-width: 420px; margin: 2rem auto; padding: 1.5rem; background: #1e293b; color: #e2e8f0; border-radius: 8px;'>" +
+          "<h2 style='margin-top: 0;'>This page must be served over HTTP</h2>" +
+          "<p>Open it via a local server. From the project folder run:</p>" +
+          "<p><code>npx serve web</code></p>" +
+          "<p>Then open <strong>http://localhost:3000</strong> in your browser.</p>" +
+          "</div>";
+        return;
+      }
+      var s = document.createElement("script");
+      s.type = "module";
+      s.src = "js/login-app.js";
+      document.body.appendChild(s);
+    })();
+  </script>
+</body>
+</html>
