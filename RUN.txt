@@ -1,0 +1,13 @@
+HOW TO RUN THE WEB GAME
+=======================
+
+1. In a terminal, go to THIS folder (SmileGame-main).
+
+2. Run:
+   npm start
+
+3. In your browser open the URL shown (e.g. http://localhost:3000).
+
+4. Sign in with email or Google, then play.
+
+Note: You must serve the app over HTTP (npm start). Opening index.html as a file (file://) will not work for login.

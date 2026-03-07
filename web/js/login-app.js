@@ -1,5 +1,14 @@
 import { login, signUp, onAuthChange, logout, loginWithGoogle, sendPhoneVerificationCode, verifyPhoneCode, updateDisplayName } from "./auth.js";
 
+if (window.location.protocol === "file:") {
+  document.body.innerHTML = "<div style='font-family: system-ui; max-width: 420px; margin: 2rem auto; padding: 1.5rem; background: #1e293b; color: #e2e8f0; border-radius: 8px;'>" +
+    "<h2 style='margin-top: 0;'>This page must be served over HTTP</h2>" +
+    "<p>From the project folder run: <code>npm start</code> or <code>npx serve web</code></p>" +
+    "<p>Then open <strong>http://localhost:3000</strong> in your browser.</p>" +
+    "</div>";
+  throw new Error("Smile Game: serve over HTTP");
+}
+
 const form = document.getElementById("auth-form");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
@@ -29,12 +38,16 @@ const profileDisplayNameInput = document.getElementById("profile-display-name");
 const profileSaveBtn = document.getElementById("profile-save-btn");
 const profileCancelBtn = document.getElementById("profile-cancel-btn");
 const welcomeHeading = document.getElementById("welcome-heading");
+const gameQuestionEl = document.querySelector(".game-question");
 const gameImageWrap = document.getElementById("game-image-wrap");
 const gameImage = document.getElementById("game-image");
 const gameImagePlaceholder = document.getElementById("game-image-placeholder");
+const gameRoundEl = document.getElementById("game-round");
+const gameTimerEl = document.getElementById("game-timer");
 const gameScoreEl = document.getElementById("game-score");
 const gameFeedbackEl = document.getElementById("game-feedback");
 const gameButtonsEl = document.getElementById("game-buttons");
+const restartBtn = document.getElementById("restart-btn");
 
 const FEEDBACK_AUTO_HIDE_MS = 2000;
 
@@ -180,8 +193,26 @@ toggleModeLink.addEventListener("click", (e) => {
  */
 let gameCounter = 0;
 let gameScore = 0;
+let roundNumber = 1;
+let remainingSeconds = 0;
+let timerId = null;
+let gameOver = false;
+let currentCorrectAnswer = 1;
 const GAME_IMAGES = ["assets/smile1.png", "assets/smile2.png"];
-const CORRECT_ANSWER = 1;
+const PUZZLE_ANSWERS = [1, 1];
+const PUZZLE_QUOTES = [
+  "Every puzzle is a door to a sharper mind.",
+  "Small clues, big breakthroughs.",
+  "Think slow, solve smart.",
+  "Pattern first, answer next.",
+  "Great minds play with possibilities.",
+  "A calm mind finds hidden logic.",
+  "One step at a time, one win at a time.",
+  "Curiosity turns confusion into clarity.",
+];
+const TOTAL_ROUNDS = 10;
+const ROUND_SECONDS = 60;
+const NEXT_PUZZLE_DELAY_MS = 650;
 
 function getGameImageUrl(name) {
   try {
@@ -191,9 +222,58 @@ function getGameImageUrl(name) {
   }
 }
 
+function setButtonsDisabled(disabled) {
+  if (!gameButtonsEl) return;
+  const buttons = gameButtonsEl.querySelectorAll("button");
+  buttons.forEach((b) => (b.disabled = disabled));
+}
+
+function updateMeta() {
+  if (gameRoundEl) gameRoundEl.textContent = `Round: ${roundNumber}/${TOTAL_ROUNDS}`;
+  if (gameTimerEl) gameTimerEl.textContent = `Time: ${remainingSeconds}s`;
+}
+
+function stopTimer() {
+  if (timerId) clearInterval(timerId);
+  timerId = null;
+}
+
+function startRoundTimer() {
+  stopTimer();
+  remainingSeconds = ROUND_SECONDS;
+  updateMeta();
+  timerId = setInterval(() => {
+    if (gameOver) return;
+    remainingSeconds -= 1;
+    updateMeta();
+    if (remainingSeconds <= 0) {
+      endGame("⏰ Time’s up!");
+    }
+  }, 1000);
+}
+
+function endGame(message) {
+  gameOver = true;
+  stopTimer();
+  setButtonsDisabled(true);
+  if (gameFeedbackEl) {
+    gameFeedbackEl.textContent = message;
+    gameFeedbackEl.className = "wrong";
+    gameFeedbackEl.style.display = "block";
+    clearTimeout(gameFeedbackEl._hideTimer);
+  }
+  if (restartBtn) restartBtn.classList.remove("hidden");
+}
+
 function nextGame() {
+  if (gameOver) return -1;
   const idx = gameCounter % GAME_IMAGES.length;
   gameCounter += 1;
+  currentCorrectAnswer = PUZZLE_ANSWERS[idx] ?? 1;
+  if (gameQuestionEl) {
+    const quoteIdx = (roundNumber - 1) % PUZZLE_QUOTES.length;
+    gameQuestionEl.textContent = PUZZLE_QUOTES[quoteIdx];
+  }
   const src = getGameImageUrl(GAME_IMAGES[idx]);
   if (gameImage) {
     gameImage.onload = () => {
@@ -216,11 +296,14 @@ function nextGame() {
     gameFeedbackEl.style.display = "none";
     clearTimeout(gameFeedbackEl._hideTimer);
   }
+  startRoundTimer();
+  updateMeta();
   return idx;
 }
 
 function checkSolution(answered) {
-  const correct = answered === CORRECT_ANSWER;
+  if (gameOver) return false;
+  const correct = answered === currentCorrectAnswer;
   if (correct) gameScore += 1;
   if (gameScoreEl) {
     gameScoreEl.textContent = "Score: " + gameScore;
@@ -230,7 +313,7 @@ function checkSolution(answered) {
     }
   }
   if (gameFeedbackEl) {
-    gameFeedbackEl.textContent = correct ? "✅ Correct!" : "❌ Try again";
+    gameFeedbackEl.textContent = correct ? "✅ Correct! Next puzzle…" : "❌ Wrong answer. Try again.";
     gameFeedbackEl.className = correct ? "correct" : "wrong";
     gameFeedbackEl.style.display = "block";
     clearTimeout(gameFeedbackEl._hideTimer);
@@ -243,26 +326,54 @@ function checkSolution(answered) {
     gameImageWrap.classList.add("puzzle-correct-flash");
     setTimeout(() => gameImageWrap.classList.remove("puzzle-correct-flash"), 500);
   }
+  if (!correct && gameButtonsEl) {
+    gameButtonsEl.classList.remove("shake");
+    // reflow to restart animation
+    void gameButtonsEl.offsetWidth;
+    gameButtonsEl.classList.add("shake");
+  }
   return correct;
 }
 
 function initGame() {
   gameCounter = 0;
   gameScore = 0;
+  roundNumber = 1;
+  gameOver = false;
+  stopTimer();
   if (!gameButtonsEl) return;
   gameButtonsEl.innerHTML = "";
+  if (restartBtn) restartBtn.classList.add("hidden");
   for (let i = 0; i <= 9; i++) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.textContent = String(i);
     btn.addEventListener("click", () => {
       const correct = checkSolution(i);
-      if (correct) nextGame();
+      if (!correct) return;
+
+      stopTimer();
+      setButtonsDisabled(true);
+
+      if (roundNumber >= TOTAL_ROUNDS) {
+        setTimeout(() => {
+          endGame(`🎉 Finished! Final score: ${gameScore}/${TOTAL_ROUNDS}`);
+        }, NEXT_PUZZLE_DELAY_MS);
+        return;
+      }
+
+      roundNumber += 1;
+      updateMeta();
+      setTimeout(() => {
+        setButtonsDisabled(false);
+        nextGame();
+      }, NEXT_PUZZLE_DELAY_MS);
     });
     gameButtonsEl.appendChild(btn);
   }
   nextGame();
   if (gameScoreEl) gameScoreEl.textContent = "Score: 0";
+  updateMeta();
 }
 
 /**
@@ -424,3 +535,10 @@ logoutBtn.addEventListener("click", async () => {
     showMessage("Sign out failed. Please try again.");
   }
 });
+
+if (restartBtn) {
+  restartBtn.addEventListener("click", () => {
+    initGame();
+    setButtonsDisabled(false);
+  });
+}

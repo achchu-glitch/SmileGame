@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base href="./" />
   <title>Smile Game – Sign in</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -332,6 +333,25 @@
       margin: 0 0 1rem;
       transition: transform 0.2s ease;
     }
+    .game-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      margin: 0.75rem 0 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .game-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0.35rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
     #game-score.score-bump {
       animation: scoreBump 0.35s ease;
     }
@@ -386,6 +406,19 @@
     }
     .game-buttons button:active {
       transform: scale(0.98);
+    }
+    .game-buttons.shake {
+      animation: shake 220ms ease-in-out;
+    }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      50% { transform: translateX(6px); }
+      75% { transform: translateX(-4px); }
+      100% { transform: translateX(0); }
+    }
+    #restart-btn {
+      margin-top: 10px;
     }
     .btn-secondary {
       padding: 0.625rem 1.25rem;
@@ -541,6 +574,10 @@
       <div class="brand-icon" aria-hidden="true">😊</div>
       <h1 id="welcome-heading">Welcome back</h1>
       <p class="game-question">What is the missing value?</p>
+      <div class="game-meta" aria-label="Round and timer">
+        <span id="game-round">Round: 1/10</span>
+        <span id="game-timer">Time: 60s</span>
+      </div>
       <div id="game-image-wrap">
         <img id="game-image" src="" alt="Equation" />
         <span id="game-image-placeholder" class="hidden" aria-hidden="true">?</span>
@@ -548,6 +585,7 @@
       <p id="game-score">Score: 0</p>
       <p id="game-feedback" aria-live="polite"></p>
       <div class="game-buttons" id="game-buttons"></div>
+      <button type="button" id="restart-btn" class="btn-primary hidden">Play again</button>
       <div class="game-area-footer">
         <p class="user-email">Signed in as <strong id="user-email"></strong></p>
         <div id="profile-settings" class="hidden profile-settings-panel">
@@ -567,22 +605,6 @@
       </div>
     </div>
   </div>
-  <script>
-    (function() {
-      if (window.location.protocol === "file:") {
-        document.body.innerHTML = "<div style='font-family: system-ui; max-width: 420px; margin: 2rem auto; padding: 1.5rem; background: #1e293b; color: #e2e8f0; border-radius: 8px;'>" +
-          "<h2 style='margin-top: 0;'>This page must be served over HTTP</h2>" +
-          "<p>Open it via a local server. From the project folder run:</p>" +
-          "<p><code>npx serve web</code></p>" +
-          "<p>Then open <strong>http://localhost:3000</strong> in your browser.</p>" +
-          "</div>";
-        return;
-      }
-      var s = document.createElement("script");
-      s.type = "module";
-      s.src = "js/login-app.js";
-      document.body.appendChild(s);
-    })();
-  </script>
+  <script type="module" src="js/login-app.js"></script>
 </body>
 </html>
