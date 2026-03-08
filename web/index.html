@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <base href="./" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <base href="/" />
   <title>Smile Game – Sign in</title>
+  <link rel="icon" type="image/png" href="/assets/smile1.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -31,13 +33,19 @@
     }
 
     * { box-sizing: border-box; }
+    html {
+      height: 100%;
+      overflow-x: hidden;
+    }
     body {
       font-family: "Plus Jakarta Sans", system-ui, sans-serif;
       margin: 0;
       min-height: 100vh;
+      height: 100%;
+      width: 100%;
       display: flex;
-      align-items: center;
-      justify-content: center;
+      align-items: stretch;
+      justify-content: stretch;
       background: var(--bg);
       color: var(--text);
       -webkit-font-smoothing: antialiased;
@@ -61,14 +69,26 @@
       flex-direction: column;
       background: var(--surface);
       padding: 2.5rem;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-lg);
+      border-radius: 0;
+      border: none;
+      box-shadow: none;
       width: 100%;
+      max-width: none;
+      min-height: 100vh;
+      flex: 1;
+    }
+    .card:not(:has(#game-area.visible)) {
       max-width: 400px;
+      min-height: 0;
+      flex: 0 1 auto;
+      align-self: center;
+      margin: 0 auto;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
     }
     .card:has(#game-area.visible) {
-      min-height: 520px;
+      min-height: 100vh;
     }
 
     .brand {
@@ -313,7 +333,7 @@
     }
     #game-image-wrap img {
       max-width: 100%;
-      max-height: 230px;
+      max-height: min(50vh, 360px);
       width: auto;
       height: auto;
       object-fit: contain;
@@ -351,6 +371,90 @@
       border-radius: 999px;
       border: 1px solid var(--border);
       background: rgba(255,255,255,0.02);
+    }
+    .game-combo {
+      background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+      color: #fff;
+      font-weight: 700;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+    .btn-extra-time {
+      margin-bottom: 0.75rem;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .btn-extra-time:hover:not(:disabled) {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .btn-extra-time.hidden { display: none !important; }
+    .game-achievements {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin: 0 0 0.5rem;
+    }
+    .game-achievements.hidden { display: none !important; }
+    .game-level-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .game-level-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .game-level-select {
+      display: flex;
+      gap: 4px;
+    }
+    .level-btn {
+      padding: 0.35rem 0.65rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      font-family: inherit;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface-elevated);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .level-btn:hover:not(:disabled) {
+      color: var(--text);
+      border-color: var(--accent);
+      background: var(--accent-subtle);
+    }
+    .level-btn.level-btn-active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .level-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .game-level-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.35rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
     }
     #game-score.score-bump {
       animation: scoreBump 0.35s ease;
@@ -495,6 +599,11 @@
       min-height: 0;
     }
 
+    #login-form {
+      max-width: 420px;
+      margin: 0 auto;
+      width: 100%;
+    }
     #login-form.hidden { display: none; }
   </style>
 </head>
@@ -574,15 +683,27 @@
       <div class="brand-icon" aria-hidden="true">😊</div>
       <h1 id="welcome-heading">Welcome back</h1>
       <p class="game-question">What is the missing value?</p>
+      <div id="game-level-row" class="game-level-row">
+        <span class="game-level-label">Level:</span>
+        <div id="game-level-select" class="game-level-select">
+          <button type="button" data-level="easy" class="level-btn" aria-pressed="false">Easy</button>
+          <button type="button" data-level="medium" class="level-btn level-btn-active" aria-pressed="true">Medium</button>
+          <button type="button" data-level="hard" class="level-btn" aria-pressed="false">Hard</button>
+        </div>
+      </div>
       <div class="game-meta" aria-label="Round and timer">
+        <span id="game-level-badge" class="game-level-badge">Level 2</span>
         <span id="game-round">Round: 1/10</span>
         <span id="game-timer">Time: 60s</span>
+        <span id="game-combo" class="game-combo hidden" aria-hidden="true"></span>
       </div>
+      <button type="button" id="extra-time-btn" class="btn-extra-time hidden" aria-label="Add 15 seconds">⏱ +15s</button>
       <div id="game-image-wrap">
         <img id="game-image" src="" alt="Equation" />
         <span id="game-image-placeholder" class="hidden" aria-hidden="true">?</span>
       </div>
       <p id="game-score">Score: 0</p>
+      <p id="game-achievements" class="game-achievements hidden" aria-live="polite"></p>
       <p id="game-feedback" aria-live="polite"></p>
       <div class="game-buttons" id="game-buttons"></div>
       <button type="button" id="restart-btn" class="btn-primary hidden">Play again</button>

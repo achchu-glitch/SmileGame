@@ -1,9 +1,8 @@
 {
   "name": "smilegame",
   "version": "1.0.0",
-  "description": "Smile Game - Web app with Firebase auth",
+  "description": "Smile Game",
   "scripts": {
-    "start": "npx -y serve web -l tcp://localhost:3000",
-    "serve": "npx -y serve web -l tcp://localhost:3000"
+    "start": "npx -y serve -p 3000 --no-port-switching web"
   }
 }
