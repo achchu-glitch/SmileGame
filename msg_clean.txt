@@ -1,0 +1,9 @@
+Premium UI, win flow, profile, and game features
+
+- Win flow: gift popup with coins from 3 sides, rays, close button; points as coins
+- Streak cards (Streak, Best, Round) in full-width controls section
+- Profile page with cartoon avatar picker, stats, and localStorage persistence
+- Achievements pill and How to play modal; round progress dots
+- Session best and puzzle-type label; welcome section (Train your brain)
+- Level buttons: Easy/Medium/Hard without time labels; footer with Profile/Sign out
+- Premium styling: indigo accent, shadows, transitions, responsive layout

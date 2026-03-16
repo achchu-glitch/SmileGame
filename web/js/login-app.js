@@ -1,4 +1,5 @@
 import { login, signUp, onAuthChange, logout, loginWithGoogle, sendPhoneVerificationCode, verifyPhoneCode, updateDisplayName } from "./auth.js";
+import { db, collection, addDoc, serverTimestamp } from "./firebase-config.js";
 
 if (window.location.protocol === "file:") {
   document.body.innerHTML = "<div style='font-family: system-ui; max-width: 420px; margin: 2rem auto; padding: 1.5rem; background: #1e293b; color: #e2e8f0; border-radius: 8px;'>" +
@@ -69,6 +70,7 @@ const gameLevelBadgeEl = document.getElementById("game-level-badge");
 const gameFeedbackEl = document.getElementById("game-feedback");
 const gameButtonsEl = document.getElementById("game-buttons");
 const restartBtn = document.getElementById("restart-btn");
+const pauseBtn = document.getElementById("pause-btn");
 
 const FEEDBACK_AUTO_HIDE_MS = 2000;
 
@@ -96,6 +98,7 @@ const FIREBASE_AUTH_CONSOLE_URL = "https://console.firebase.google.com/project/s
 function getAuthErrorMessage(code) {
   const messages = {
     "auth/invalid-credential": "Invalid email or password.",
+    "auth/invalid-login-credentials": "Invalid email or password.",
     "auth/user-not-found": "No account found with this email.",
     "auth/wrong-password": "Invalid email or password.",
     "auth/invalid-email": "Please enter a valid email address.",
@@ -123,6 +126,7 @@ function getAuthErrorMessage(code) {
 }
 
 function showMessage(text, isError = true) {
+  if (!formMessage) return;
   formMessage.innerHTML = "";
   formMessage.textContent = text;
   formMessage.className = isError ? "error" : "success";
@@ -132,6 +136,7 @@ function showMessage(text, isError = true) {
 
 /** Show error with a link to Firebase Console (for operation-not-allowed, unauthorized-domain) */
 function showMessageWithConsoleLink(message) {
+  if (!formMessage) return;
   formMessage.innerHTML = `${message} <a href="${FIREBASE_AUTH_CONSOLE_URL}" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">Open Firebase Console →</a>`;
   formMessage.className = "error";
   formMessage.style.display = "block";
@@ -139,8 +144,10 @@ function showMessageWithConsoleLink(message) {
 }
 
 function setLoading(loading) {
-  submitBtn.disabled = loading;
-  submitBtn.textContent = loading ? "Please wait…" : (isSignUp ? "Create account" : "Login");
+  if (submitBtn) {
+    submitBtn.disabled = loading;
+    submitBtn.textContent = loading ? "Please wait…" : (isSignUp ? "Create account" : "Login");
+  }
 }
 
 /**
@@ -148,8 +155,8 @@ function setLoading(loading) {
  */
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
+  const email = (emailInput && emailInput.value) ? emailInput.value.trim() : "";
+  const password = (passwordInput && passwordInput.value) ? passwordInput.value : "";
 
   if (!email || !password) {
     showMessage("Please fill in email and password.");
@@ -162,8 +169,15 @@ form.addEventListener("submit", async (e) => {
   try {
     if (isSignUp) {
       const cred = await signUp(email, password);
-      const name = displayNameSignupInput && displayNameSignupInput.value.trim();
-      if (name) await updateDisplayName(cred.user, name);
+      const name = displayNameSignupInput ? displayNameSignupInput.value.trim() : "";
+      if (name) {
+        try {
+          await updateDisplayName(cred.user, name);
+        } catch (nameErr) {
+          console.warn("Display name update failed:", nameErr);
+          // User is still signed in; onAuthStateChanged will show game
+        }
+      }
       showMessage("Account created. You are now logged in.", false);
     } else {
       await login(email, password);
@@ -203,8 +217,8 @@ toggleModeLink.addEventListener("click", (e) => {
     }
   }
   if (isSignUp) {
-    phoneAuthSection.classList.add("hidden");
-    recaptchaPhoneContainer.innerHTML = "";
+    if (phoneAuthSection) phoneAuthSection.classList.add("hidden");
+    if (recaptchaPhoneContainer) recaptchaPhoneContainer.innerHTML = "";
   }
   showMessage("");
 });
@@ -218,6 +232,10 @@ let roundNumber = 1;
 let remainingSeconds = 0;
 let timerId = null;
 let gameOver = false;
+<<<<<<< HEAD
+let isPaused = false;
+=======
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
 let isLoadingPuzzle = false;
 let currentCorrectAnswer = 1;
 let consecutiveCorrect = 0;
@@ -413,7 +431,15 @@ function updateMeta() {
   if (gameLevelBadgeEl) gameLevelBadgeEl.textContent = LEVELS[currentLevel] ? LEVELS[currentLevel].label : "Level 2";
   if (gameRoundEl) gameRoundEl.textContent = `Round: ${roundNumber}/${TOTAL_ROUNDS}`;
   const timerEl = document.getElementById("game-timer");
+<<<<<<< HEAD
+  if (timerEl) {
+    if (isPaused) timerEl.textContent = "Paused";
+    else if (relaxMode) timerEl.textContent = "Time: —";
+    else timerEl.textContent = `Time: ${remainingSeconds}s`;
+  }
+=======
   if (timerEl) timerEl.textContent = relaxMode ? "Time: —" : `Time: ${remainingSeconds}s`;
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   if (relaxMode && extraTimeBtn) extraTimeBtn.classList.add("hidden");
   if (gameComboEl) {
     if (consecutiveCorrect >= 2) {
@@ -456,15 +482,20 @@ function stopTimer() {
 
 function startRoundTimer() {
   stopTimer();
+<<<<<<< HEAD
+  if (relaxMode || isPaused) {
+    if (relaxMode) remainingSeconds = 0;
+=======
   if (relaxMode) {
     remainingSeconds = 0;
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
     updateMeta();
     return;
   }
   remainingSeconds = roundSecondsForCurrentGame ?? 60;
   updateMeta();
   timerId = setInterval(() => {
-    if (gameOver) return;
+    if (gameOver || isPaused) return;
     remainingSeconds -= 1;
     updateMeta();
     if (remainingSeconds <= 0) {
@@ -473,6 +504,62 @@ function startRoundTimer() {
   }, 1000);
 }
 
+<<<<<<< HEAD
+function resumeTimer() {
+  stopTimer();
+  if (relaxMode || isPaused || gameOver) return;
+  if (remainingSeconds <= 0) {
+    endGame("⏰ Time's up!");
+    return;
+  }
+  updateMeta();
+  timerId = setInterval(() => {
+    if (gameOver || isPaused) return;
+    remainingSeconds -= 1;
+    updateMeta();
+    if (remainingSeconds <= 0) endGame("⏰ Time's up!");
+  }, 1000);
+}
+
+function updatePauseButtonState() {
+  if (!pauseBtn) return;
+  if (isPaused) {
+    pauseBtn.textContent = "▶ Resume";
+    pauseBtn.classList.add("pause-active");
+    pauseBtn.setAttribute("aria-pressed", "true");
+    pauseBtn.title = "Resume game";
+  } else {
+    pauseBtn.textContent = "⏸ Pause";
+    pauseBtn.classList.remove("pause-active");
+    pauseBtn.setAttribute("aria-pressed", "false");
+    pauseBtn.title = "Pause game";
+  }
+}
+
+function pauseGame() {
+  if (gameOver || relaxMode) return;
+  isPaused = true;
+  stopTimer();
+  setButtonsDisabled(true);
+  if (extraTimeBtn) extraTimeBtn.disabled = true;
+  updatePauseButtonState();
+  updateMeta();
+}
+
+function resumeGame() {
+  if (!isPaused || gameOver) return;
+  isPaused = false;
+  if (!relaxMode) {
+    resumeTimer();
+    if (extraTimeBtn) extraTimeBtn.disabled = false;
+  }
+  setButtonsDisabled(false);
+  updatePauseButtonState();
+  updateMeta();
+}
+
+=======
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
 function startWinSparkle() {
   const wrap = document.getElementById("win-sparkle-wrap");
   if (!wrap) return;
@@ -649,9 +736,15 @@ async function nextGame() {
   const idx = gameCounter % GAME_IMAGES.length;
   gameCounter += 1;
 
+<<<<<<< HEAD
+  /* Keep main prompt fixed; quotes were confusing in the top area */
+  if (gameQuestionEl && !gameQuestionEl.textContent.trim()) {
+    gameQuestionEl.textContent = "What is the missing value?";
+=======
   if (gameQuestionEl) {
     const quoteIdx = (roundNumber - 1) % PUZZLE_QUOTES.length;
     gameQuestionEl.textContent = PUZZLE_QUOTES[quoteIdx];
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
   hideEquationPuzzle();
   if (gameImage) {
@@ -671,13 +764,17 @@ async function nextGame() {
     console.error("Puzzle API error, using fallback:", err);
     currentCorrectAnswer = PUZZLE_ANSWERS[idx] ?? 1;
     src = getGameImageUrl(GAME_IMAGES[idx]);
+<<<<<<< HEAD
+    if (gameQuestionEl) gameQuestionEl.textContent = "What is the missing value?";
+=======
     if (gameQuestionEl) gameQuestionEl.textContent = "Using offline puzzle (API unavailable)";
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
 
   if (!src || !isValidImageSrc(src)) {
     currentCorrectAnswer = PUZZLE_ANSWERS[idx] ?? 1;
     src = getGameImageUrl(GAME_IMAGES[idx]);
-    if (gameQuestionEl) gameQuestionEl.textContent = "Using offline puzzle";
+    if (gameQuestionEl) gameQuestionEl.textContent = "What is the missing value?";
   }
   if (gameImage) {
     gameImage.alt = "Puzzle";
@@ -732,12 +829,20 @@ async function refreshPuzzleForCurrentLevel() {
   } catch (err) {
     currentCorrectAnswer = PUZZLE_ANSWERS[idx] ?? 1;
     src = getGameImageUrl(GAME_IMAGES[idx]);
+<<<<<<< HEAD
+    if (gameQuestionEl) gameQuestionEl.textContent = "What is the missing value?";
+=======
     if (gameQuestionEl) gameQuestionEl.textContent = "Using offline puzzle (API unavailable)";
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
   if (!src || !isValidImageSrc(src)) {
     currentCorrectAnswer = PUZZLE_ANSWERS[idx] ?? 1;
     src = getGameImageUrl(GAME_IMAGES[idx]);
+<<<<<<< HEAD
+    if (gameQuestionEl) gameQuestionEl.textContent = "What is the missing value?";
+=======
     if (gameQuestionEl) gameQuestionEl.textContent = "Using offline puzzle";
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
   if (gameImage) {
     gameImage.alt = "Puzzle";
@@ -817,10 +922,25 @@ function checkSolution(answered) {
     gameImageWrap.classList.add("puzzle-correct-flash");
     setTimeout(() => gameImageWrap.classList.remove("puzzle-correct-flash"), 500);
   }
+<<<<<<< HEAD
+  if (!correct) {
+    if (gameImageWrap) {
+      gameImageWrap.classList.remove("puzzle-shake");
+      void gameImageWrap.offsetWidth;
+      gameImageWrap.classList.add("puzzle-shake");
+      setTimeout(() => gameImageWrap.classList.remove("puzzle-shake"), 320);
+    }
+    if (gameButtonsEl) {
+      gameButtonsEl.classList.remove("shake");
+      void gameButtonsEl.offsetWidth;
+      gameButtonsEl.classList.add("shake");
+    }
+=======
   if (!correct && gameButtonsEl) {
     gameButtonsEl.classList.remove("shake");
     void gameButtonsEl.offsetWidth;
     gameButtonsEl.classList.add("shake");
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
   return correct;
 }
@@ -838,6 +958,7 @@ function getUnlockedAchievements() {
 }
 
 function initGame() {
+  if (gameQuestionEl) gameQuestionEl.textContent = "What is the missing value?";
   gameCounter = 0;
   gameScore = 0;
   roundNumber = 1;
@@ -848,7 +969,12 @@ function initGame() {
   bestStreakThisGame = 0;
   totalTimeBonusThisGame = 0;
   roundSecondsForCurrentGame = LEVELS[currentLevel] ? LEVELS[currentLevel].seconds : 60;
+  isPaused = false;
   stopTimer();
+<<<<<<< HEAD
+  updatePauseButtonState();
+=======
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   const sparkleWrap = document.getElementById("win-sparkle-wrap");
   if (sparkleWrap) {
     sparkleWrap.innerHTML = "";
@@ -926,61 +1052,74 @@ onAuthChange((user) => {
 });
 
 /** Continue with Google */
-googleBtn.addEventListener("click", async () => {
-  showMessage("");
-  googleBtn.disabled = true;
-  try {
-    await loginWithGoogle();
-  } catch (err) {
-    console.error("Google sign-in error:", err.code, err.message, err);
-    const code = err.code || "";
-    const message = getAuthErrorMessage(code) || err.message || "An error occurred. Please try again.";
-    if (code === "auth/operation-not-allowed" || code === "auth/unauthorized-domain") {
-      showMessageWithConsoleLink(message);
-    } else {
-      showMessage(message);
+if (googleBtn) {
+  googleBtn.addEventListener("click", async () => {
+    showMessage("");
+    googleBtn.disabled = true;
+    try {
+      await loginWithGoogle();
+    } catch (err) {
+      console.error("Google sign-in error:", err.code, err.message, err);
+      const code = err.code || "";
+      const message = getAuthErrorMessage(code) || err.message || "An error occurred. Please try again.";
+      if (code === "auth/operation-not-allowed" || code === "auth/unauthorized-domain") {
+        showMessageWithConsoleLink(message);
+      } else {
+        showMessage(message);
+      }
+    } finally {
+      googleBtn.disabled = false;
     }
-  } finally {
-    googleBtn.disabled = false;
-  }
-});
+  });
+}
 
 /** Show phone auth section */
-phoneBtn.addEventListener("click", () => {
-  phoneAuthSection.classList.remove("hidden");
-  phoneInput.value = "";
-  phoneCodeInput.value = "";
-  phoneCodeSection.classList.add("hidden");
-  phoneConfirmationResult = null;
-  recaptchaPhoneContainer.innerHTML = "";
-  showMessage("");
-});
+if (phoneBtn) {
+  phoneBtn.addEventListener("click", () => {
+    if (phoneAuthSection) phoneAuthSection.classList.remove("hidden");
+    if (phoneInput) phoneInput.value = "";
+    if (phoneCodeInput) phoneCodeInput.value = "";
+    if (phoneCodeSection) phoneCodeSection.classList.add("hidden");
+    phoneConfirmationResult = null;
+    if (recaptchaPhoneContainer) recaptchaPhoneContainer.innerHTML = "";
+    showMessage("");
+  });
+}
 
 /** Cancel phone auth */
-phoneCancelBtn.addEventListener("click", () => {
-  phoneAuthSection.classList.add("hidden");
-  recaptchaPhoneContainer.innerHTML = "";
-  showMessage("");
-});
+if (phoneCancelBtn) {
+  phoneCancelBtn.addEventListener("click", () => {
+    if (phoneAuthSection) phoneAuthSection.classList.add("hidden");
+    if (recaptchaPhoneContainer) recaptchaPhoneContainer.innerHTML = "";
+    showMessage("");
+  });
+}
 
 /** Send phone verification code */
-sendCodeBtn.addEventListener("click", async () => {
-  const phone = phoneInput.value.trim().replace(/\s/g, "");
-  if (!phone) {
-    showMessage("Please enter your phone number (e.g. +1234567890).");
-    return;
-  }
-  const normalized = phone.startsWith("+") ? phone : "+" + phone;
-  showMessage("");
-  sendCodeBtn.disabled = true;
-  try {
-    phoneConfirmationResult = await sendPhoneVerificationCode(recaptchaPhoneContainer, normalized);
-    recaptchaPhoneContainer.innerHTML = "";
-    phoneCodeSection.classList.remove("hidden");
-    phoneCodeInput.value = "";
-    phoneCodeInput.focus();
-    showMessage("Code sent. Enter it above.", false);
-  } catch (err) {
+if (sendCodeBtn) {
+  sendCodeBtn.addEventListener("click", async () => {
+    const phone = phoneInput ? phoneInput.value.trim().replace(/\s/g, "") : "";
+    if (!phone) {
+      showMessage("Please enter your phone number (e.g. +1234567890).");
+      return;
+    }
+    if (!recaptchaPhoneContainer) {
+      showMessage("Verification not available. Refresh the page and try again.");
+      return;
+    }
+    const normalized = phone.startsWith("+") ? phone : "+" + phone;
+    showMessage("");
+    sendCodeBtn.disabled = true;
+    try {
+      phoneConfirmationResult = await sendPhoneVerificationCode(recaptchaPhoneContainer, normalized);
+      recaptchaPhoneContainer.innerHTML = "";
+      if (phoneCodeSection) phoneCodeSection.classList.remove("hidden");
+      if (phoneCodeInput) {
+        phoneCodeInput.value = "";
+        phoneCodeInput.focus();
+      }
+      showMessage("Code sent. Enter it above.", false);
+    } catch (err) {
     console.error("Phone auth error:", err.code, err.message, err);
     const code = err.code || "";
     const message =
@@ -996,34 +1135,37 @@ sendCodeBtn.addEventListener("click", async () => {
     sendCodeBtn.disabled = false;
   }
 });
+}
 
 /** Verify phone code and sign in */
-verifyCodeBtn.addEventListener("click", async () => {
-  const code = phoneCodeInput.value.trim();
-  if (!code || !phoneConfirmationResult) {
-    showMessage("Enter the 6-digit code from the SMS.");
-    return;
-  }
-  showMessage("");
-  verifyCodeBtn.disabled = true;
-  try {
-    await verifyPhoneCode(phoneConfirmationResult, code);
-    phoneAuthSection.classList.add("hidden");
-    phoneConfirmationResult = null;
-    recaptchaPhoneContainer.innerHTML = "";
-  } catch (err) {
-    console.error("Verify code error:", err.code, err.message, err);
-    const errCode = err.code || "";
-    const message = getAuthErrorMessage(errCode) || err.message || "Invalid or expired code. Try again.";
-    if (errCode === "auth/operation-not-allowed" || errCode === "auth/unauthorized-domain") {
-      showMessageWithConsoleLink(message);
-    } else {
-      showMessage(message);
+if (verifyCodeBtn) {
+  verifyCodeBtn.addEventListener("click", async () => {
+    const code = phoneCodeInput ? phoneCodeInput.value.trim() : "";
+    if (!code || !phoneConfirmationResult) {
+      showMessage("Enter the 6-digit code from the SMS.");
+      return;
     }
-  } finally {
-    verifyCodeBtn.disabled = false;
-  }
-});
+    showMessage("");
+    verifyCodeBtn.disabled = true;
+    try {
+      await verifyPhoneCode(phoneConfirmationResult, code);
+      if (phoneAuthSection) phoneAuthSection.classList.add("hidden");
+      phoneConfirmationResult = null;
+      if (recaptchaPhoneContainer) recaptchaPhoneContainer.innerHTML = "";
+    } catch (err) {
+      console.error("Verify code error:", err.code, err.message, err);
+      const errCode = err.code || "";
+      const message = getAuthErrorMessage(errCode) || err.message || "Invalid or expired code. Try again.";
+      if (errCode === "auth/operation-not-allowed" || errCode === "auth/unauthorized-domain") {
+        showMessageWithConsoleLink(message);
+      } else {
+        showMessage(message);
+      }
+    } finally {
+      verifyCodeBtn.disabled = false;
+    }
+  });
+}
 
 let selectedProfileAvatar = getStoredAvatar();
 
@@ -1209,6 +1351,17 @@ if (restartBtn) {
   });
 }
 
+<<<<<<< HEAD
+if (pauseBtn) {
+  pauseBtn.addEventListener("click", () => {
+    if (gameOver) return;
+    if (isPaused) resumeGame();
+    else pauseGame();
+  });
+}
+
+=======
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
 const howToPlayModal = document.getElementById("how-to-play-modal");
 const howToPlayBtn = document.getElementById("how-to-play-btn");
 const howToPlayClose = document.getElementById("how-to-play-close");
@@ -1235,3 +1388,235 @@ if (achievementsPillEl) {
     openProfilePage();
   });
 }
+<<<<<<< HEAD
+
+function escapeHtml(s) {
+  if (s == null || typeof s !== "string") return "";
+  const div = document.createElement("div");
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+function getLeaderboardData() {
+  const stats = getProfileStats();
+  const currentUserName = (currentUser && (currentUser.displayName || currentUser.email))
+    ? (currentUser.displayName || currentUser.email.split("@")[0])
+    : "You";
+  const entries = [
+    { name: "BrainMaster", score: 2840, avatar: "🧠", badges: ["🏆", "🔥"] },
+    { name: "NumberNinja", score: 2620, avatar: "🥷", badges: ["🏆", "⭐"] },
+    { name: "PuzzlePro", score: 2510, avatar: "🎯", badges: ["🏆"] },
+    { name: "QuickMind", score: 2380, avatar: "⚡", badges: ["🔥"] },
+    { name: "MathWiz", score: 2190, avatar: "📐", badges: [] },
+    { name: "SmileChamp", score: 2050, avatar: "😊", badges: [] },
+  ];
+  if (stats.best > 0) {
+    const myEntry = { name: currentUserName, score: stats.best, avatar: getStoredAvatar(), badges: stats.streak >= 5 ? ["🔥"] : [] };
+    const merged = entries.filter((e) => e.name !== currentUserName);
+    merged.push(myEntry);
+    merged.sort((a, b) => b.score - a.score);
+    return merged.slice(0, 10).map((e, i) => ({ ...e, rank: i + 1 }));
+  }
+  return entries.map((e, i) => ({ ...e, rank: i + 1 }));
+}
+
+function openLeaderboard() {
+  const modal = document.getElementById("leaderboard-modal");
+  const podium = document.getElementById("leaderboard-podium");
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  if (!modal || !podium || !list) return;
+  const data = getLeaderboardData();
+  podium.innerHTML = "";
+  list.innerHTML = "";
+  const top3 = data.slice(0, 3);
+  const rest = data.slice(3);
+  const crowns = ["🥈", "👑", "🥉"];
+  top3.forEach((entry, i) => {
+    const rank = i + 1;
+    const div = document.createElement("div");
+    div.className = `leaderboard-podium-item rank-${rank}`;
+    div.setAttribute("aria-label", `${rank === 1 ? "First" : rank === 2 ? "Second" : "Third"} place: ${entry.name}, ${entry.score} points`);
+    div.innerHTML = `
+      <span class="leaderboard-podium-crown" aria-hidden="true">${crowns[i]}</span>
+      <div class="leaderboard-podium-avatar" aria-hidden="true">${entry.avatar}</div>
+      <span class="leaderboard-podium-name">${escapeHtml(entry.name)}</span>
+      <span class="leaderboard-podium-score">${entry.score.toLocaleString()}</span>
+      <div class="leaderboard-podium-block"></div>`;
+    podium.appendChild(div);
+  });
+  rest.forEach((entry) => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <span class="rank">${entry.rank}</span>
+      <span class="avatar" aria-hidden="true">${entry.avatar}</span>
+      <span class="name">${escapeHtml(entry.name)}</span>
+      <span class="score">${entry.score.toLocaleString()}</span>
+      <span class="badges">${(entry.badges || []).map((b) => `<span class="badge" aria-hidden="true">${b}</span>`).join("")}</span>`;
+    list.appendChild(li);
+  });
+  if (empty) {
+    empty.classList.toggle("hidden", data.length > 0);
+  }
+  list.classList.toggle("hidden", rest.length === 0);
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeLeaderboard() {
+  const modal = document.getElementById("leaderboard-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+  }
+}
+
+const leaderboardBtn = document.getElementById("leaderboard-btn");
+const leaderboardClose = document.getElementById("leaderboard-close");
+const leaderboardBackdrop = document.querySelector(".leaderboard-backdrop");
+if (leaderboardBtn) leaderboardBtn.addEventListener("click", openLeaderboard);
+if (leaderboardClose) leaderboardClose.addEventListener("click", closeLeaderboard);
+if (leaderboardBackdrop) leaderboardBackdrop.addEventListener("click", closeLeaderboard);
+
+const RATING_FEEDBACK_STORAGE_KEY = "smilegame_rating_feedback_sent";
+
+function openRatingFeedbackModal() {
+  const modal = document.getElementById("rating-feedback-modal");
+  const form = document.getElementById("rating-feedback-form");
+  const thanks = document.getElementById("rating-feedback-thanks");
+  if (!modal || !form || !thanks) return;
+  const alreadySent = (() => {
+    try {
+      return localStorage.getItem(RATING_FEEDBACK_STORAGE_KEY) === "1";
+    } catch (_) { return false; }
+  })();
+  if (alreadySent) {
+    form.classList.add("hidden");
+    thanks.classList.remove("hidden");
+  } else {
+    form.classList.remove("hidden");
+    thanks.classList.add("hidden");
+    selectedRating = 0;
+    const stars = modal.querySelectorAll(".rating-star");
+    stars.forEach((s) => { s.classList.remove("active"); s.setAttribute("aria-pressed", "false"); s.textContent = "☆"; });
+    const selectedEl = document.getElementById("rating-feedback-selected");
+    if (selectedEl) selectedEl.textContent = "";
+    const textEl = document.getElementById("rating-feedback-text");
+    if (textEl) textEl.value = "";
+  }
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeRatingFeedbackModal() {
+  const modal = document.getElementById("rating-feedback-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+  }
+}
+
+async function submitRatingFeedback(rating, comment) {
+  const payload = {
+    rating: Math.min(5, Math.max(1, Number(rating) || 0)),
+    comment: typeof comment === "string" ? comment.trim().slice(0, 1000) : "",
+    createdAt: serverTimestamp(),
+  };
+  if (currentUser) {
+    payload.userId = currentUser.uid;
+    payload.userEmail = currentUser.email || null;
+    payload.displayName = currentUser.displayName || null;
+  } else {
+    payload.userId = null;
+  }
+  await addDoc(collection(db, "feedback"), payload);
+  try {
+    localStorage.setItem(RATING_FEEDBACK_STORAGE_KEY, "1");
+  } catch (_) {}
+}
+
+const ratingFeedbackBtn = document.getElementById("rating-feedback-btn");
+const ratingFeedbackClose = document.getElementById("rating-feedback-close");
+const ratingFeedbackBackdrop = document.querySelector(".rating-feedback-backdrop");
+const ratingFeedbackSubmit = document.getElementById("rating-feedback-submit");
+
+if (ratingFeedbackBtn) ratingFeedbackBtn.addEventListener("click", openRatingFeedbackModal);
+if (ratingFeedbackClose) ratingFeedbackClose.addEventListener("click", closeRatingFeedbackModal);
+if (ratingFeedbackBackdrop) ratingFeedbackBackdrop.addEventListener("click", closeRatingFeedbackModal);
+
+const ratingStars = document.querySelectorAll(".rating-star");
+let selectedRating = 0;
+ratingStars.forEach((star) => {
+  star.addEventListener("click", () => {
+    selectedRating = parseInt(star.getAttribute("data-rating"), 10) || 0;
+    ratingStars.forEach((s) => {
+      const r = parseInt(s.getAttribute("data-rating"), 10);
+      const active = r <= selectedRating;
+      s.classList.toggle("active", active);
+      s.setAttribute("aria-pressed", active);
+      s.textContent = active ? "★" : "☆";
+    });
+    const selectedEl = document.getElementById("rating-feedback-selected");
+    if (selectedEl) selectedEl.textContent = selectedRating ? `${selectedRating} star${selectedRating === 1 ? "" : "s"} selected` : "";
+  });
+});
+
+if (ratingFeedbackSubmit) {
+  ratingFeedbackSubmit.addEventListener("click", async () => {
+    if (selectedRating <= 0) return;
+    const textEl = document.getElementById("rating-feedback-text");
+    const comment = textEl ? textEl.value : "";
+    const errorEl = document.getElementById("rating-feedback-error");
+    if (errorEl) {
+      errorEl.classList.add("hidden");
+      errorEl.textContent = "";
+    }
+    ratingFeedbackSubmit.disabled = true;
+    try {
+      await submitRatingFeedback(selectedRating, comment);
+      const form = document.getElementById("rating-feedback-form");
+      const thanks = document.getElementById("rating-feedback-thanks");
+      if (form) form.classList.add("hidden");
+      if (thanks) thanks.classList.remove("hidden");
+    } catch (e) {
+      console.error("Submit feedback error:", e);
+      if (errorEl) {
+        const msg = e && e.code === "permission-denied"
+          ? "Feedback is not allowed (check Firestore rules)."
+          : (e && e.message) || "Couldn’t send. Check your connection and try again.";
+        errorEl.textContent = msg;
+        errorEl.classList.remove("hidden");
+      }
+    } finally {
+      ratingFeedbackSubmit.disabled = false;
+    }
+  });
+}
+
+const THEME_STORAGE_KEY = "smilegame_theme";
+function getStoredTheme() {
+  try {
+    const t = localStorage.getItem(THEME_STORAGE_KEY);
+    return t === "dark" || t === "neon" ? t : "light";
+  } catch (_) { return "light"; }
+}
+function applyTheme(theme) {
+  if (theme === "light") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", theme);
+  document.querySelectorAll(".theme-btn").forEach((btn) => {
+    const active = btn.getAttribute("data-theme") === theme;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-pressed", active);
+  });
+}
+function setTheme(theme) {
+  if (theme !== "light" && theme !== "dark" && theme !== "neon") return;
+  try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch (_) {}
+  applyTheme(theme);
+}
+applyTheme(getStoredTheme());
+document.querySelectorAll(".theme-btn").forEach((btn) => {
+  btn.addEventListener("click", () => setTheme(btn.getAttribute("data-theme")));
+});
+=======
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c

@@ -13,6 +13,12 @@ import {
   signInWithPhoneNumber,
   RecaptchaVerifier,
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  serverTimestamp,
+} from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 // Your web app's Firebase configuration (Firebase JS SDK v7.20.0+)
 const firebaseConfig = {
@@ -28,6 +34,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 
 // Analytics optional – if it fails (e.g. ad blocker, wrong domain), auth still works
 let analytics = null;
@@ -47,6 +54,7 @@ export {
   app,
   analytics,
   auth,
+  db,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -57,3 +65,4 @@ export {
   signInWithPhoneNumber,
   RecaptchaVerifier,
 };
+export { collection, addDoc, serverTimestamp };
