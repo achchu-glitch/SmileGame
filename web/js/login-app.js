@@ -232,7 +232,10 @@ let roundNumber = 1;
 let remainingSeconds = 0;
 let timerId = null;
 let gameOver = false;
+<<<<<<< HEAD
 let isPaused = false;
+=======
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
 let isLoadingPuzzle = false;
 let currentCorrectAnswer = 1;
 let consecutiveCorrect = 0;
@@ -428,11 +431,15 @@ function updateMeta() {
   if (gameLevelBadgeEl) gameLevelBadgeEl.textContent = LEVELS[currentLevel] ? LEVELS[currentLevel].label : "Level 2";
   if (gameRoundEl) gameRoundEl.textContent = `Round: ${roundNumber}/${TOTAL_ROUNDS}`;
   const timerEl = document.getElementById("game-timer");
+<<<<<<< HEAD
   if (timerEl) {
     if (isPaused) timerEl.textContent = "Paused";
     else if (relaxMode) timerEl.textContent = "Time: —";
     else timerEl.textContent = `Time: ${remainingSeconds}s`;
   }
+=======
+  if (timerEl) timerEl.textContent = relaxMode ? "Time: —" : `Time: ${remainingSeconds}s`;
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   if (relaxMode && extraTimeBtn) extraTimeBtn.classList.add("hidden");
   if (gameComboEl) {
     if (consecutiveCorrect >= 2) {
@@ -475,8 +482,13 @@ function stopTimer() {
 
 function startRoundTimer() {
   stopTimer();
+<<<<<<< HEAD
   if (relaxMode || isPaused) {
     if (relaxMode) remainingSeconds = 0;
+=======
+  if (relaxMode) {
+    remainingSeconds = 0;
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
     updateMeta();
     return;
   }
@@ -492,6 +504,7 @@ function startRoundTimer() {
   }, 1000);
 }
 
+<<<<<<< HEAD
 function resumeTimer() {
   stopTimer();
   if (relaxMode || isPaused || gameOver) return;
@@ -545,6 +558,8 @@ function resumeGame() {
   updateMeta();
 }
 
+=======
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
 function startWinSparkle() {
   const wrap = document.getElementById("win-sparkle-wrap");
   if (!wrap) return;
@@ -721,9 +736,15 @@ async function nextGame() {
   const idx = gameCounter % GAME_IMAGES.length;
   gameCounter += 1;
 
+<<<<<<< HEAD
   /* Keep main prompt fixed; quotes were confusing in the top area */
   if (gameQuestionEl && !gameQuestionEl.textContent.trim()) {
     gameQuestionEl.textContent = "What is the missing value?";
+=======
+  if (gameQuestionEl) {
+    const quoteIdx = (roundNumber - 1) % PUZZLE_QUOTES.length;
+    gameQuestionEl.textContent = PUZZLE_QUOTES[quoteIdx];
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
   hideEquationPuzzle();
   if (gameImage) {
@@ -743,7 +764,11 @@ async function nextGame() {
     console.error("Puzzle API error, using fallback:", err);
     currentCorrectAnswer = PUZZLE_ANSWERS[idx] ?? 1;
     src = getGameImageUrl(GAME_IMAGES[idx]);
+<<<<<<< HEAD
     if (gameQuestionEl) gameQuestionEl.textContent = "What is the missing value?";
+=======
+    if (gameQuestionEl) gameQuestionEl.textContent = "Using offline puzzle (API unavailable)";
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
 
   if (!src || !isValidImageSrc(src)) {
@@ -804,12 +829,20 @@ async function refreshPuzzleForCurrentLevel() {
   } catch (err) {
     currentCorrectAnswer = PUZZLE_ANSWERS[idx] ?? 1;
     src = getGameImageUrl(GAME_IMAGES[idx]);
+<<<<<<< HEAD
     if (gameQuestionEl) gameQuestionEl.textContent = "What is the missing value?";
+=======
+    if (gameQuestionEl) gameQuestionEl.textContent = "Using offline puzzle (API unavailable)";
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
   if (!src || !isValidImageSrc(src)) {
     currentCorrectAnswer = PUZZLE_ANSWERS[idx] ?? 1;
     src = getGameImageUrl(GAME_IMAGES[idx]);
+<<<<<<< HEAD
     if (gameQuestionEl) gameQuestionEl.textContent = "What is the missing value?";
+=======
+    if (gameQuestionEl) gameQuestionEl.textContent = "Using offline puzzle";
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
   if (gameImage) {
     gameImage.alt = "Puzzle";
@@ -889,6 +922,7 @@ function checkSolution(answered) {
     gameImageWrap.classList.add("puzzle-correct-flash");
     setTimeout(() => gameImageWrap.classList.remove("puzzle-correct-flash"), 500);
   }
+<<<<<<< HEAD
   if (!correct) {
     if (gameImageWrap) {
       gameImageWrap.classList.remove("puzzle-shake");
@@ -901,6 +935,12 @@ function checkSolution(answered) {
       void gameButtonsEl.offsetWidth;
       gameButtonsEl.classList.add("shake");
     }
+=======
+  if (!correct && gameButtonsEl) {
+    gameButtonsEl.classList.remove("shake");
+    void gameButtonsEl.offsetWidth;
+    gameButtonsEl.classList.add("shake");
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
   return correct;
 }
@@ -931,7 +971,10 @@ function initGame() {
   roundSecondsForCurrentGame = LEVELS[currentLevel] ? LEVELS[currentLevel].seconds : 60;
   isPaused = false;
   stopTimer();
+<<<<<<< HEAD
   updatePauseButtonState();
+=======
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   const sparkleWrap = document.getElementById("win-sparkle-wrap");
   if (sparkleWrap) {
     sparkleWrap.innerHTML = "";
@@ -1308,6 +1351,7 @@ if (restartBtn) {
   });
 }
 
+<<<<<<< HEAD
 if (pauseBtn) {
   pauseBtn.addEventListener("click", () => {
     if (gameOver) return;
@@ -1316,6 +1360,8 @@ if (pauseBtn) {
   });
 }
 
+=======
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
 const howToPlayModal = document.getElementById("how-to-play-modal");
 const howToPlayBtn = document.getElementById("how-to-play-btn");
 const howToPlayClose = document.getElementById("how-to-play-close");
@@ -1342,6 +1388,7 @@ if (achievementsPillEl) {
     openProfilePage();
   });
 }
+<<<<<<< HEAD
 
 function escapeHtml(s) {
   if (s == null || typeof s !== "string") return "";
@@ -1571,3 +1618,5 @@ applyTheme(getStoredTheme());
 document.querySelectorAll(".theme-btn").forEach((btn) => {
   btn.addEventListener("click", () => setTheme(btn.getAttribute("data-theme")));
 });
+=======
+>>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
