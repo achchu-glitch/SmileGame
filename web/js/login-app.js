@@ -232,10 +232,7 @@ let roundNumber = 1;
 let remainingSeconds = 0;
 let timerId = null;
 let gameOver = false;
-<<<<<<< HEAD
 let isPaused = false;
-=======
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
 let isLoadingPuzzle = false;
 let currentCorrectAnswer = 1;
 let consecutiveCorrect = 0;
@@ -266,9 +263,10 @@ const HARD_EQUATIONS = [
   { eq: "? × 2 = 6", answer: 3 }, { eq: "4 × ? = 4", answer: 1 }, { eq: "10 ÷ 2 = ?", answer: 5 },
 ];
 
-const BANANA_API_URL = "http://marcconrad.com/uob/banana/api.php?out=json&base64=yes";
-const SMILE_API_URL = "http://marcconrad.com/uob/smile/api.php?out=json&base64=yes";
+const BANANA_API_URL = "https://marcconrad.com/uob/banana/api.php?out=json&base64=yes";
+const SMILE_API_URL = "https://marcconrad.com/uob/smile/api.php?out=json&base64=yes";
 const CORS_PROXY_PREFIX = "https://corsproxy.io/?";
+const PUZZLE_API_FALLBACK_URLS = [BANANA_API_URL, SMILE_API_URL];
 const PUZZLE_QUOTES = [
   "Every puzzle is a door to a sharper mind.",
   "Small clues, big breakthroughs.",
@@ -286,6 +284,7 @@ const TIME_BONUS_PER_5_SEC = 1;
 const COMBO_MAX = 3;
 const EXTRA_TIME_SECONDS = 15;
 const EXTRA_TIME_USES_PER_GAME = 1;
+const FIRST_CLASS_SCORE = 80;
 
 const LEVELS = {
   easy:   { name: "Easy",   seconds: 60, label: "Level 1" },
@@ -293,8 +292,146 @@ const LEVELS = {
   hard:   { name: "Hard",   seconds: 20, label: "Level 3" },
 };
 
+const LEVEL_ORDER = ["easy", "medium", "hard"];
+
+// Lightweight built-in synth sounds (no external audio files required).
+let audioCtx = null;
+let audioUnlocked = false;
+
+function ensureAudioContext() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  if (!audioCtx) audioCtx = new AudioContextClass();
+  if (audioCtx.state === "suspended") {
+    void audioCtx.resume().then(() => { audioUnlocked = true; }).catch(() => {});
+  } else {
+    audioUnlocked = true;
+  }
+  return audioCtx;
+}
+
+function playTone(freq, durationSec, type = "sine", volume = 0.035, startDelaySec = 0) {
+  const ctx = ensureAudioContext();
+  if (!ctx || freq <= 0) return;
+  const t0 = ctx.currentTime + Math.max(0, startDelaySec);
+  const t1 = t0 + Math.max(0.02, durationSec);
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t1);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(t0);
+  osc.stop(t1 + 0.02);
+}
+
+function playCorrectSound(comboMultiplier) {
+  const base = 520 + (comboMultiplier - 1) * 40;
+  playTone(base, 0.08, "triangle", 0.03, 0);
+  playTone(base * 1.25, 0.1, "triangle", 0.03, 0.07);
+  if (comboMultiplier >= 2) {
+    playTone(base * 1.5, 0.12, "sine", 0.028, 0.14);
+  }
+}
+
+function playWrongSound() {
+  playTone(180, 0.12, "sawtooth", 0.026, 0);
+  playTone(140, 0.14, "sawtooth", 0.022, 0.08);
+}
+
+function playWinSound() {
+  playTone(523.25, 0.1, "triangle", 0.03, 0);
+  playTone(659.25, 0.11, "triangle", 0.03, 0.09);
+  playTone(783.99, 0.13, "triangle", 0.032, 0.19);
+}
+
+function playFirstClassSound() {
+  // A brighter "first class" fanfare.
+  playTone(659.25, 0.1, "square", 0.028, 0);
+  playTone(783.99, 0.1, "square", 0.028, 0.09);
+  playTone(987.77, 0.13, "square", 0.03, 0.18);
+  playTone(1318.51, 0.18, "triangle", 0.03, 0.3);
+}
+
 const PROFILE_AVATARS = ["😊", "🦊", "🐱", "🐶", "🦁", "🐸", "🦄", "🐵", "🐻", "🦋", "🐰", "🐼", "🦝", "🐨", "🦉", "🐯"];
-const STORAGE_KEYS = { avatar: "smilegame_avatar", gamesPlayed: "smilegame_games", bestScore: "smilegame_best", bestStreak: "smilegame_streak" };
+const STORAGE_KEYS = {
+  avatar: "smilegame_avatar",
+  gamesPlayed: "smilegame_games",
+  bestScore: "smilegame_best",
+  bestStreak: "smilegame_streak",
+  dailyCompletedDate: "smilegame_daily_done",
+  dailyBestPrefix: "smilegame_daily_best_",
+  levelsUnlocked: "smilegame_levels_unlocked",
+};
+
+/** @returns {string} YYYY-MM-DD for today (local). */
+function getDailyChallengeDateString() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Deterministic level for the day (same for all players). */
+function getDailyChallengeLevel() {
+  const dateStr = getDailyChallengeDateString();
+  let hash = 0;
+  for (let i = 0; i < dateStr.length; i++) hash = (hash * 31 + dateStr.charCodeAt(i)) >>> 0;
+  const levels = ["easy", "medium", "hard"];
+  return levels[hash % levels.length];
+}
+
+function getDailyChallengeCompleted(dateStr) {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.dailyCompletedDate) === dateStr;
+  } catch (_) { return false; }
+}
+
+function getDailyChallengeBestScore(dateStr) {
+  try {
+    return Math.max(0, parseInt(localStorage.getItem(STORAGE_KEYS.dailyBestPrefix + dateStr) || "0", 10));
+  } catch (_) { return 0; }
+}
+
+function setDailyChallengeCompleted(dateStr, score) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.dailyCompletedDate, dateStr);
+    const prev = getDailyChallengeBestScore(dateStr);
+    localStorage.setItem(STORAGE_KEYS.dailyBestPrefix + dateStr, String(Math.max(prev, score)));
+  } catch (_) {}
+}
+
+/** @returns {string[]} Level ids that are unlocked (easy is always unlocked). */
+function getUnlockedLevels() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.levelsUnlocked);
+    if (!raw) return ["easy"];
+    const list = raw.split(",").filter((l) => LEVEL_ORDER.includes(l));
+    if (!list.includes("easy")) list.unshift("easy");
+    return list;
+  } catch (_) { return ["easy"]; }
+}
+
+function setLevelUnlocked(level) {
+  if (!LEVELS[level]) return;
+  try {
+    const list = getUnlockedLevels();
+    if (list.includes(level)) return;
+    list.push(level);
+    list.sort((a, b) => LEVEL_ORDER.indexOf(a) - LEVEL_ORDER.indexOf(b));
+    localStorage.setItem(STORAGE_KEYS.levelsUnlocked, list.join(","));
+  } catch (_) {}
+}
+
+/** Call when player wins a game to unlock the next level. */
+function unlockNextLevelAfterWin(completedLevel) {
+  if (completedLevel === "easy") setLevelUnlocked("medium");
+  else if (completedLevel === "medium") setLevelUnlocked("hard");
+}
 
 function getStoredAvatar() {
   try {
@@ -327,6 +464,7 @@ function saveProfileStatsAfterGame(score, bestStreakThisGame) {
 let currentLevel = "easy";
 let roundSecondsForCurrentGame = LEVELS.easy.seconds;
 let relaxMode = false;
+let dailyChallengeMode = false;
 
 function getGameImageUrl(name) {
   try {
@@ -414,7 +552,15 @@ async function fetchPuzzleFromUrl(baseUrl) {
 }
 
 async function fetchPuzzleFromApi() {
-  return fetchPuzzleFromUrl(BANANA_API_URL);
+  let lastErr = null;
+  for (const url of PUZZLE_API_FALLBACK_URLS) {
+    try {
+      return await fetchPuzzleFromUrl(url);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error("All puzzle API endpoints failed");
 }
 
 async function fetchSmilePuzzleFromApi() {
@@ -428,18 +574,19 @@ function setButtonsDisabled(disabled) {
 }
 
 function updateMeta() {
-  if (gameLevelBadgeEl) gameLevelBadgeEl.textContent = LEVELS[currentLevel] ? LEVELS[currentLevel].label : "Level 2";
+  if (gameLevelBadgeEl) {
+    gameLevelBadgeEl.textContent = dailyChallengeMode
+      ? "Daily"
+      : (LEVELS[currentLevel] ? LEVELS[currentLevel].label : "Level 2");
+  }
   if (gameRoundEl) gameRoundEl.textContent = `Round: ${roundNumber}/${TOTAL_ROUNDS}`;
+  updateDailyChallengeUI();
   const timerEl = document.getElementById("game-timer");
-<<<<<<< HEAD
   if (timerEl) {
     if (isPaused) timerEl.textContent = "Paused";
     else if (relaxMode) timerEl.textContent = "Time: —";
     else timerEl.textContent = `Time: ${remainingSeconds}s`;
   }
-=======
-  if (timerEl) timerEl.textContent = relaxMode ? "Time: —" : `Time: ${remainingSeconds}s`;
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   if (relaxMode && extraTimeBtn) extraTimeBtn.classList.add("hidden");
   if (gameComboEl) {
     if (consecutiveCorrect >= 2) {
@@ -466,13 +613,83 @@ function updateMeta() {
   }
 }
 
+function updateLevelButtonsUnlocked() {
+  if (!gameLevelSelectEl || dailyChallengeMode) return;
+  const unlocked = getUnlockedLevels();
+  gameLevelSelectEl.querySelectorAll(".level-btn").forEach((btn) => {
+    const level = btn.getAttribute("data-level");
+    const isUnlocked = unlocked.includes(level);
+    btn.classList.toggle("level-btn-locked", !isUnlocked);
+    btn.disabled = !isUnlocked;
+    if (!isUnlocked) {
+      const idx = LEVEL_ORDER.indexOf(level);
+      const prev = idx > 0 ? LEVELS[LEVEL_ORDER[idx - 1]] : null;
+      btn.title = prev ? `Complete ${prev.name} to unlock` : "Locked";
+    } else {
+      const cfg = LEVELS[level];
+      btn.title = cfg ? `${cfg.name} · ${cfg.seconds}s per round` : level;
+    }
+  });
+  if (gameLevelBadgeEl) {
+    const canChange = unlocked.includes(currentLevel);
+    gameLevelBadgeEl.disabled = !canChange;
+  }
+}
+
 function setLevelButtonsEnabled(enabled) {
+  if (dailyChallengeMode) return;
+  const unlocked = getUnlockedLevels();
   if (gameLevelSelectEl) {
     gameLevelSelectEl.querySelectorAll(".level-btn").forEach((btn) => {
-      btn.disabled = !enabled;
+      const level = btn.getAttribute("data-level");
+      const isUnlocked = unlocked.includes(level);
+      btn.disabled = !isUnlocked || !enabled;
     });
   }
-  if (gameLevelBadgeEl) gameLevelBadgeEl.disabled = !enabled;
+  if (gameLevelBadgeEl) {
+    const canChange = unlocked.includes(currentLevel);
+    gameLevelBadgeEl.disabled = !canChange || !enabled;
+  }
+}
+
+function updateDailyChallengeUI() {
+  const levelRow = document.getElementById("game-level-row");
+  const dailyLabel = document.getElementById("daily-challenge-label");
+  const dailyBtn = document.getElementById("daily-challenge-btn");
+  if (levelRow) levelRow.classList.toggle("hidden", dailyChallengeMode);
+  if (dailyLabel) {
+    dailyLabel.classList.toggle("hidden", !dailyChallengeMode);
+    if (dailyChallengeMode) {
+      const level = getDailyChallengeLevel();
+      const cfg = LEVELS[level];
+      const sec = cfg ? cfg.seconds : 60;
+      const dateStr = getDailyChallengeDateString();
+      const completed = getDailyChallengeCompleted(dateStr);
+      const best = getDailyChallengeBestScore(dateStr);
+      let text = `Today: ${cfg ? cfg.name : level} · ${sec}s/round`;
+      if (completed && best > 0) text += ` · Best: ${best}`;
+      if (completed) text += " ✓";
+      dailyLabel.textContent = text;
+    }
+  }
+  if (dailyBtn) dailyBtn.classList.toggle("hidden", dailyChallengeMode);
+}
+
+function startDailyChallenge() {
+  dailyChallengeMode = true;
+  const level = getDailyChallengeLevel();
+  currentLevel = level;
+  roundSecondsForCurrentGame = LEVELS[level] ? LEVELS[level].seconds : 60;
+  if (gameLevelSelectEl) {
+    gameLevelSelectEl.querySelectorAll(".level-btn").forEach((b) => {
+      const isActive = b.getAttribute("data-level") === level;
+      b.classList.toggle("level-btn-active", isActive);
+      b.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+  }
+  updateDailyChallengeUI();
+  updateMeta();
+  initGame();
 }
 
 function stopTimer() {
@@ -482,13 +699,8 @@ function stopTimer() {
 
 function startRoundTimer() {
   stopTimer();
-<<<<<<< HEAD
   if (relaxMode || isPaused) {
     if (relaxMode) remainingSeconds = 0;
-=======
-  if (relaxMode) {
-    remainingSeconds = 0;
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
     updateMeta();
     return;
   }
@@ -504,7 +716,6 @@ function startRoundTimer() {
   }, 1000);
 }
 
-<<<<<<< HEAD
 function resumeTimer() {
   stopTimer();
   if (relaxMode || isPaused || gameOver) return;
@@ -524,12 +735,12 @@ function resumeTimer() {
 function updatePauseButtonState() {
   if (!pauseBtn) return;
   if (isPaused) {
-    pauseBtn.textContent = "▶ Resume";
+    pauseBtn.textContent = "▶";
     pauseBtn.classList.add("pause-active");
     pauseBtn.setAttribute("aria-pressed", "true");
     pauseBtn.title = "Resume game";
   } else {
-    pauseBtn.textContent = "⏸ Pause";
+    pauseBtn.textContent = "⏸";
     pauseBtn.classList.remove("pause-active");
     pauseBtn.setAttribute("aria-pressed", "false");
     pauseBtn.title = "Pause game";
@@ -558,8 +769,6 @@ function resumeGame() {
   updateMeta();
 }
 
-=======
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
 function startWinSparkle() {
   const wrap = document.getElementById("win-sparkle-wrap");
   if (!wrap) return;
@@ -710,11 +919,30 @@ function endGame(message) {
     clearTimeout(gameFeedbackEl._hideTimer);
   }
   if (isWin) {
+    playWinSound();
+    if (gameScore >= FIRST_CLASS_SCORE) playFirstClassSound();
     startWinSparkle();
     saveProfileStatsAfterGame(gameScore, bestStreakThisGame);
     sessionBestScore = Math.max(sessionBestScore, gameScore);
+    unlockNextLevelAfterWin(currentLevel);
+    updateLevelButtonsUnlocked();
     const sessionBestEl = document.getElementById("session-best");
     if (sessionBestEl) sessionBestEl.textContent = String(sessionBestScore);
+    if (gameFeedbackEl && gameScore >= FIRST_CLASS_SCORE) {
+      gameFeedbackEl.textContent += " 🏅 First Class score!";
+    }
+    if (dailyChallengeMode) {
+      const dateStr = getDailyChallengeDateString();
+      setDailyChallengeCompleted(dateStr, gameScore);
+      if (gameFeedbackEl) gameFeedbackEl.textContent = message + " 📅 Daily challenge complete!";
+      dailyChallengeMode = false;
+      updateDailyChallengeUI();
+      setLevelButtonsEnabled(true);
+    }
+  } else if (dailyChallengeMode) {
+    dailyChallengeMode = false;
+    updateDailyChallengeUI();
+    setLevelButtonsEnabled(true);
   }
   const achievementsPill = document.getElementById("achievements-pill");
   const achievementsCountEl = document.getElementById("achievements-count");
@@ -736,15 +964,8 @@ async function nextGame() {
   const idx = gameCounter % GAME_IMAGES.length;
   gameCounter += 1;
 
-<<<<<<< HEAD
-  /* Keep main prompt fixed; quotes were confusing in the top area */
   if (gameQuestionEl && !gameQuestionEl.textContent.trim()) {
     gameQuestionEl.textContent = "What is the missing value?";
-=======
-  if (gameQuestionEl) {
-    const quoteIdx = (roundNumber - 1) % PUZZLE_QUOTES.length;
-    gameQuestionEl.textContent = PUZZLE_QUOTES[quoteIdx];
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
   hideEquationPuzzle();
   if (gameImage) {
@@ -764,11 +985,7 @@ async function nextGame() {
     console.error("Puzzle API error, using fallback:", err);
     currentCorrectAnswer = PUZZLE_ANSWERS[idx] ?? 1;
     src = getGameImageUrl(GAME_IMAGES[idx]);
-<<<<<<< HEAD
     if (gameQuestionEl) gameQuestionEl.textContent = "What is the missing value?";
-=======
-    if (gameQuestionEl) gameQuestionEl.textContent = "Using offline puzzle (API unavailable)";
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
 
   if (!src || !isValidImageSrc(src)) {
@@ -829,20 +1046,12 @@ async function refreshPuzzleForCurrentLevel() {
   } catch (err) {
     currentCorrectAnswer = PUZZLE_ANSWERS[idx] ?? 1;
     src = getGameImageUrl(GAME_IMAGES[idx]);
-<<<<<<< HEAD
     if (gameQuestionEl) gameQuestionEl.textContent = "What is the missing value?";
-=======
-    if (gameQuestionEl) gameQuestionEl.textContent = "Using offline puzzle (API unavailable)";
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
   if (!src || !isValidImageSrc(src)) {
     currentCorrectAnswer = PUZZLE_ANSWERS[idx] ?? 1;
     src = getGameImageUrl(GAME_IMAGES[idx]);
-<<<<<<< HEAD
     if (gameQuestionEl) gameQuestionEl.textContent = "What is the missing value?";
-=======
-    if (gameQuestionEl) gameQuestionEl.textContent = "Using offline puzzle";
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
   if (gameImage) {
     gameImage.alt = "Puzzle";
@@ -872,6 +1081,8 @@ function getExplainMistakeMessage(answered) {
 }
 
 function checkSolution(answered) {
+  // Unlock audio on first gameplay interaction (browser autoplay policy).
+  ensureAudioContext();
   if (gameOver) return false;
   if (isLoadingPuzzle) return false;
   const correct = answered === currentCorrectAnswer;
@@ -885,9 +1096,11 @@ function checkSolution(answered) {
     consecutiveCorrect += 1;
     bestStreakThisGame = Math.max(bestStreakThisGame, consecutiveCorrect);
     if (consecutiveCorrect >= COMBO_MAX) maxComboReachedThisGame = Math.max(maxComboReachedThisGame, consecutiveCorrect);
+    playCorrectSound(comboMultiplier);
     updateMeta();
   } else {
     consecutiveCorrect = 0;
+    playWrongSound();
   }
   if (gameScoreEl) {
     gameScoreEl.textContent = "Score: " + gameScore;
@@ -922,7 +1135,6 @@ function checkSolution(answered) {
     gameImageWrap.classList.add("puzzle-correct-flash");
     setTimeout(() => gameImageWrap.classList.remove("puzzle-correct-flash"), 500);
   }
-<<<<<<< HEAD
   if (!correct) {
     if (gameImageWrap) {
       gameImageWrap.classList.remove("puzzle-shake");
@@ -935,12 +1147,6 @@ function checkSolution(answered) {
       void gameButtonsEl.offsetWidth;
       gameButtonsEl.classList.add("shake");
     }
-=======
-  if (!correct && gameButtonsEl) {
-    gameButtonsEl.classList.remove("shake");
-    void gameButtonsEl.offsetWidth;
-    gameButtonsEl.classList.add("shake");
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   }
   return correct;
 }
@@ -971,10 +1177,7 @@ function initGame() {
   roundSecondsForCurrentGame = LEVELS[currentLevel] ? LEVELS[currentLevel].seconds : 60;
   isPaused = false;
   stopTimer();
-<<<<<<< HEAD
   updatePauseButtonState();
-=======
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   const sparkleWrap = document.getElementById("win-sparkle-wrap");
   if (sparkleWrap) {
     sparkleWrap.innerHTML = "";
@@ -992,6 +1195,7 @@ function initGame() {
   if (achievementsPill) achievementsPill.classList.add("hidden");
   const sessionBestEl = document.getElementById("session-best");
   if (sessionBestEl) sessionBestEl.textContent = String(sessionBestScore);
+  updateLevelButtonsUnlocked();
   setLevelButtonsEnabled(true);
   if (!gameButtonsEl) return;
   gameButtonsEl.innerHTML = "";
@@ -1255,7 +1459,7 @@ logoutBtn.addEventListener("click", async () => {
 });
 
 function setLevel(level) {
-  if (!LEVELS[level]) return;
+  if (!LEVELS[level] || !getUnlockedLevels().includes(level)) return;
   currentLevel = level;
   roundSecondsForCurrentGame = LEVELS[level].seconds;
   if (gameLevelSelectEl) {
@@ -1304,12 +1508,15 @@ if (gameLevelSelectEl) {
 if (gameLevelBadgeEl) {
   gameLevelBadgeEl.addEventListener("click", () => {
     if (gameLevelBadgeEl.disabled) return;
-    const levelOrder = ["easy", "medium", "hard"];
-    const idx = levelOrder.indexOf(currentLevel);
-    const nextLevel = levelOrder[(idx + 1) % levelOrder.length];
+    const unlocked = getUnlockedLevels();
+    const idx = unlocked.indexOf(currentLevel);
+    const nextLevel = unlocked[(idx + 1) % unlocked.length];
     setLevel(nextLevel);
   });
 }
+
+const dailyChallengeBtn = document.getElementById("daily-challenge-btn");
+if (dailyChallengeBtn) dailyChallengeBtn.addEventListener("click", startDailyChallenge);
 
 const relaxModeBtn = document.getElementById("relax-mode-btn");
 if (relaxModeBtn) relaxModeBtn.addEventListener("click", toggleRelaxMode);
@@ -1351,7 +1558,6 @@ if (restartBtn) {
   });
 }
 
-<<<<<<< HEAD
 if (pauseBtn) {
   pauseBtn.addEventListener("click", () => {
     if (gameOver) return;
@@ -1360,8 +1566,6 @@ if (pauseBtn) {
   });
 }
 
-=======
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
 const howToPlayModal = document.getElementById("how-to-play-modal");
 const howToPlayBtn = document.getElementById("how-to-play-btn");
 const howToPlayClose = document.getElementById("how-to-play-close");
@@ -1388,7 +1592,6 @@ if (achievementsPillEl) {
     openProfilePage();
   });
 }
-<<<<<<< HEAD
 
 function escapeHtml(s) {
   if (s == null || typeof s !== "string") return "";
@@ -1618,5 +1821,3 @@ applyTheme(getStoredTheme());
 document.querySelectorAll(".theme-btn").forEach((btn) => {
   btn.addEventListener("click", () => setTheme(btn.getAttribute("data-theme")));
 });
-=======
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c

@@ -6,18 +6,13 @@
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <base href="/" />
   <title>Smile Game – Sign in</title>
-<<<<<<< HEAD
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
-=======
-  <link rel="icon" type="image/png" href="/assets/smile1.png" />
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <style>
     :root {
-<<<<<<< HEAD
       /* Theme 1 — Indigo Brain Game */
       --bg: #F5F7FB;
       --surface: #FFFFFF;
@@ -36,25 +31,6 @@
       --error-bg: rgba(239, 68, 68, 0.08);
       --success: #22C55E;
       --success-bg: rgba(34, 197, 94, 0.08);
-=======
-      --bg: #f8f9fc;
-      --surface: #ffffff;
-      --surface-elevated: #fafbff;
-      --surface-overlay: #f1f3f9;
-      --border: #e8eaef;
-      --border-focus: #4f46e5;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --text-subtle: #94a3b8;
-      --accent: #4f46e5;
-      --accent-hover: #4338ca;
-      --accent-subtle: rgba(79, 70, 229, 0.1);
-      --accent-glow: rgba(79, 70, 229, 0.25);
-      --error: #b91c1c;
-      --error-bg: rgba(185, 28, 28, 0.06);
-      --success: #047857;
-      --success-bg: rgba(4, 120, 87, 0.08);
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
       --radius: 16px;
       --radius-sm: 12px;
       --radius-pill: 999px;
@@ -62,7 +38,6 @@
       --shadow-md: 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 10px 20px -5px rgba(0, 0, 0, 0.08);
       --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.03);
       --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-<<<<<<< HEAD
     }
 
     /* 2️⃣ Dark Mode */
@@ -111,8 +86,6 @@
       --shadow: 0 0 20px rgba(0, 245, 255, 0.08), 0 4px 6px rgba(0, 0, 0, 0.3);
       --shadow-md: 0 0 30px rgba(0, 245, 255, 0.1), 0 10px 25px rgba(0, 0, 0, 0.3);
       --shadow-lg: 0 0 40px rgba(0, 245, 255, 0.12), 0 25px 50px rgba(0, 0, 0, 0.4);
-=======
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
     }
 
     * { box-sizing: border-box; }
@@ -133,14 +106,11 @@
       color: var(--text);
       -webkit-font-smoothing: antialiased;
       letter-spacing: -0.01em;
-<<<<<<< HEAD
     }
     /* When only login form is shown, center the card in the middle of the page */
     body:has(.card:not(:has(#game-area.visible))) {
       align-items: center;
       justify-content: center;
-=======
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
     }
 
     body::before {
@@ -148,11 +118,7 @@
       position: fixed;
       inset: 0;
       background: radial-gradient(ellipse 120% 80% at 50% -20%, rgba(79, 70, 229, 0.06), transparent 50%),
-<<<<<<< HEAD
                   linear-gradient(180deg, var(--bg) 0%, var(--surface-overlay) 100%);
-=======
-                  linear-gradient(180deg, var(--bg) 0%, #f1f3f9 100%);
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
       pointer-events: none;
     }
     html[data-theme="dark"] body::before {
@@ -180,14 +146,9 @@
       flex: 1;
     }
     .card:not(:has(#game-area.visible)) {
-<<<<<<< HEAD
       max-width: 360px;
       min-width: 0;
       min-height: 0;
-=======
-      max-width: 420px;
-      min-width: 0;
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
       flex: 0 1 auto;
       align-self: center;
       margin: 0 auto;
@@ -198,7 +159,6 @@
     }
     .card:has(#game-area.visible) {
       min-height: 100vh;
-<<<<<<< HEAD
     }
 
     /* Compact login card – minimize height */
@@ -244,8 +204,6 @@
     }
     .card:not(:has(#game-area.visible)) .toggle-mode {
       margin-top: 0.25rem;
-=======
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
     }
 
     .brand {
@@ -253,7 +211,6 @@
       margin-bottom: 1.75rem;
     }
     .brand-icon {
-<<<<<<< HEAD
       width: 120px;
       height: 120px;
       margin: 0 auto 1rem;
@@ -268,18 +225,6 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-=======
-      width: 52px;
-      height: 52px;
-      margin: 0 auto 1rem;
-      background: linear-gradient(145deg, var(--accent) 0%, #6366f1 50%, #7c3aed 100%);
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-      box-shadow: 0 8px 24px -4px var(--accent-glow);
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
     }
     .brand h1 {
       margin: 0;
@@ -542,11 +487,7 @@
       max-width: 100%;
       margin: 0 auto;
       width: 100%;
-<<<<<<< HEAD
       padding: 0.45rem 1rem 0.9rem;
-=======
-      padding: 1.25rem 1.5rem 1.5rem;
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
     }
     #game-area .game-header h1 {
       margin: 0 0 0.35rem;
@@ -586,7 +527,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-<<<<<<< HEAD
       gap: 0.75rem;
       padding: 0.85rem 1rem 0.9rem;
       position: relative;
@@ -594,16 +534,13 @@
       background: linear-gradient(135deg, rgba(79, 70, 229, 0.04) 0%, rgba(99, 102, 241, 0.02) 50%, transparent 100%);
       border-bottom: 1px solid var(--border);
       box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.6) inset;
-=======
-      gap: 1rem;
-      padding: 0.75rem 1rem 0.5rem;
-      position: relative;
     }
     .game-welcome {
       text-align: center;
-      padding: 0.5rem 1rem 0.75rem;
+      padding: 0 2.75rem;
       margin: 0 auto;
-      max-width: 32rem;
+      max-width: 34rem;
+      position: relative;
     }
     .game-welcome-headline {
       margin: 0 0 0.35rem;
@@ -848,6 +785,38 @@
       gap: 0.65rem;
       flex-shrink: 0;
     }
+    .game-level-row.hidden { display: none !important; }
+    .daily-challenge-btn {
+      padding: 0.5rem 0.9rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      font-family: inherit;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+      box-shadow: var(--shadow);
+      white-space: nowrap;
+    }
+    .daily-challenge-btn:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: var(--accent-subtle);
+    }
+    .daily-challenge-btn--icon {
+      padding: 0.5rem;
+      min-width: 2.25rem;
+      font-size: 1.1rem;
+    }
+    .daily-challenge-label {
+      margin: 0 0 0.35rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .daily-challenge-label.hidden { display: none !important; }
     .game-level-label {
       font-size: 0.875rem;
       font-weight: 600;
@@ -894,6 +863,14 @@
       opacity: 0.5;
       cursor: not-allowed;
     }
+    .level-btn.level-btn-locked {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .level-btn.level-btn-locked::before {
+      content: "🔒 ";
+      font-size: 0.75em;
+    }
     .relax-mode-btn {
       padding: 0.6rem 1.15rem;
       font-size: 1rem;
@@ -906,6 +883,11 @@
       cursor: pointer;
       transition: all var(--transition);
       box-shadow: var(--shadow);
+    }
+    .relax-mode-btn--icon {
+      padding: 0.5rem;
+      min-width: 2.25rem;
+      font-size: 1.1rem;
     }
     .relax-mode-btn:hover {
       color: var(--text);
@@ -1157,7 +1139,6 @@
       padding: 1.75rem;
       box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.8);
       transition: box-shadow var(--transition), border-color var(--transition);
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
     }
     .game-welcome {
       text-align: center;
@@ -1166,7 +1147,6 @@
       max-width: 34rem;
       position: relative;
     }
-<<<<<<< HEAD
     .game-welcome-headline {
       margin: 0 0 0.25rem;
       font-size: clamp(1.35rem, 3.8vw, 1.75rem);
@@ -1482,6 +1462,14 @@
       opacity: 0.5;
       cursor: not-allowed;
     }
+    .level-btn.level-btn-locked {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .level-btn.level-btn-locked::before {
+      content: "🔒 ";
+      font-size: 0.75em;
+    }
     .relax-mode-btn {
       padding: 0.45rem 0.85rem;
       font-size: 0.875rem;
@@ -1517,6 +1505,11 @@
       cursor: pointer;
       transition: all var(--transition);
       box-shadow: var(--shadow);
+    }
+    .pause-btn--icon {
+      padding: 0.5rem;
+      min-width: 2.25rem;
+      font-size: 1rem;
     }
     .pause-btn:hover {
       color: var(--text);
@@ -2218,69 +2211,6 @@
       display: inline-block;
       box-shadow: var(--shadow);
     }
-=======
-    @keyframes puzzleCorrectFlash {
-      0% { box-shadow: 0 0 0 2px var(--success); border-color: var(--success); }
-      50% { box-shadow: 0 0 16px 2px rgba(5, 150, 105, 0.25); }
-      100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.6); border-color: var(--border); }
-    }
-    #game-image-wrap img {
-      max-width: 100%;
-      max-height: min(75vh, 580px);
-      width: auto;
-      height: auto;
-      object-fit: contain;
-      border-radius: 8px;
-    }
-    #game-image-placeholder {
-      font-size: 3.25rem;
-      font-weight: 600;
-      color: var(--text-subtle);
-    }
-    .game-equation-text {
-      font-size: clamp(1.75rem, 5vw, 2.75rem);
-      font-weight: 700;
-      color: var(--text);
-      letter-spacing: 0.02em;
-      padding: 0.75rem 1.25rem;
-      text-align: center;
-    }
-    .game-equation-text .equation-blank {
-      display: inline-block;
-      min-width: 1.4em;
-      padding: 0 0.2em;
-      color: var(--accent);
-      border-bottom: 4px solid var(--accent);
-      margin: 0 0.08em;
-    }
-    .game-equation-text.hidden { display: none !important; }
-    #game-image-wrap:has(#game-image-placeholder:not(.hidden)) {
-      display: flex;
-    }
-    .game-score-wrap {
-      text-align: center;
-      margin-bottom: 1.25rem;
-    }
-    .session-best-wrap {
-      font-size: 0.8125rem;
-      color: var(--text-muted);
-      margin: 0.25rem 0 0;
-    }
-    #game-score {
-      font-size: clamp(1.25rem, 3.5vw, 1.5rem);
-      font-weight: 700;
-      color: var(--success);
-      margin: 0;
-      letter-spacing: -0.02em;
-      transition: transform var(--transition);
-      padding: 0.7rem 1.5rem;
-      border-radius: var(--radius-sm);
-      background: linear-gradient(135deg, var(--success-bg) 0%, rgba(4, 120, 87, 0.06) 100%);
-      border: 1px solid rgba(4, 120, 87, 0.2);
-      display: inline-block;
-      box-shadow: var(--shadow);
-    }
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
     #game-score.score-bump {
       animation: scoreBump 0.35s ease;
     }
@@ -2290,17 +2220,10 @@
       100% { transform: scale(1); }
     }
     #game-feedback {
-<<<<<<< HEAD
       min-height: 1.4em;
       font-size: clamp(0.875rem, 2vw, 1rem);
       font-weight: 600;
       margin-bottom: 0.85rem;
-=======
-      min-height: 1.75em;
-      font-size: clamp(1rem, 2.5vw, 1.125rem);
-      font-weight: 600;
-      margin-bottom: 1.25rem;
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
       transition: opacity var(--transition);
     }
     #game-feedback:empty {
@@ -2316,31 +2239,18 @@
     .game-buttons {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
-<<<<<<< HEAD
       gap: 0.4rem;
       width: 100%;
       max-width: 260px;
       margin-left: auto;
       margin-right: auto;
       margin-bottom: 1rem;
-=======
-      gap: 0.6rem;
-      width: 100%;
-      max-width: 320px;
-      margin-left: auto;
-      margin-right: auto;
-      margin-bottom: 1.75rem;
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
     }
     .game-buttons button {
       aspect-ratio: 1;
       min-width: 0;
       padding: 0;
-<<<<<<< HEAD
       font-size: clamp(1rem, 3.25vw, 1.2rem);
-=======
-      font-size: clamp(1.2rem, 4vw, 1.5rem);
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
       font-weight: 700;
       font-family: inherit;
       color: var(--text);
@@ -2816,15 +2726,9 @@
     </div>
     <div id="game-area">
       <div class="game-top-bar">
-<<<<<<< HEAD
         <button type="button" id="how-to-play-btn" class="btn-how-to-play btn-how-to-play--bar" aria-label="How to play" title="How to play">?</button>
         <div class="game-welcome">
           <h1 class="game-welcome-headline">Train your brain.</h1>
-=======
-        <div class="game-welcome">
-          <h1 class="game-welcome-headline">Train your brain.</h1>
-          <p class="game-welcome-tagline">Every puzzle is a door to a sharper mind—solve the numbers, build your streak, and have fun.</p>
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
         </div>
         <button type="button" id="profile-avatar-btn" class="profile-avatar-btn" aria-label="Open profile" title="Profile">
           <span id="profile-avatar-display" class="profile-avatar-display">😊</span>
@@ -2840,21 +2744,15 @@
                 <button type="button" data-level="medium" data-seconds="45" class="level-btn" aria-pressed="false">Medium</button>
                 <button type="button" data-level="hard" data-seconds="20" class="level-btn" aria-pressed="false">Hard</button>
               </div>
+              <button type="button" id="daily-challenge-btn" class="daily-challenge-btn daily-challenge-btn--icon" title="Today’s challenge" aria-label="Daily challenge">📅</button>
             </div>
-<<<<<<< HEAD
+            <p id="daily-challenge-label" class="daily-challenge-label hidden" aria-live="polite"></p>
             <div class="game-meta" aria-label="Timer">
-=======
-            <div class="game-meta" aria-label="Round and timer">
-              <span id="game-round">Round: 1/10</span>
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
               <span id="game-timer">Time: 60s</span>
               <span id="game-combo" class="game-combo hidden" aria-hidden="true"></span>
             </div>
-            <button type="button" id="relax-mode-btn" class="relax-mode-btn" aria-pressed="false" title="No timer">😌 Relax</button>
-<<<<<<< HEAD
-            <button type="button" id="pause-btn" class="pause-btn" aria-pressed="false" title="Pause game">⏸ Pause</button>
-=======
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
+            <button type="button" id="relax-mode-btn" class="relax-mode-btn relax-mode-btn--icon" aria-pressed="false" title="No timer" aria-label="Relax mode">😌</button>
+            <button type="button" id="pause-btn" class="pause-btn pause-btn--icon" aria-pressed="false" title="Pause game" aria-label="Pause">⏸</button>
           </div>
           <div id="streak-cards" class="streak-cards" aria-label="Streak and progress">
             <div id="streak-card-current" class="streak-card" data-card="current">
@@ -2893,10 +2791,6 @@
           </div>
           <div class="game-extra-actions">
             <button type="button" id="extra-time-btn" class="btn-extra-time hidden" aria-label="Add 15 seconds">⏱ +15s</button>
-<<<<<<< HEAD
-=======
-            <button type="button" id="how-to-play-btn" class="btn-how-to-play" aria-label="How to play" title="How to play">?</button>
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
             <a href="#" id="achievements-pill" class="achievements-pill hidden" aria-label="View achievements">🏆 <span id="achievements-count">0</span></a>
           </div>
         </section>
@@ -2956,15 +2850,12 @@
         </div>
       </div>
       <div class="game-area-footer">
-<<<<<<< HEAD
         <div class="theme-switcher theme-switcher-footer" role="group" aria-label="Theme">
           <span class="theme-switcher-label">Theme</span>
           <button type="button" class="theme-btn theme-btn-light" data-theme="light" aria-pressed="true" title="Light">☀️</button>
           <button type="button" class="theme-btn theme-btn-dark" data-theme="dark" aria-pressed="false" title="Dark">🌙</button>
           <button type="button" class="theme-btn theme-btn-neon" data-theme="neon" aria-pressed="false" title="Neon">✨</button>
         </div>
-=======
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
         <p class="user-email">Signed in as <strong id="user-email"></strong></p>
         <div class="game-area-footer-actions">
           <button type="button" id="leaderboard-btn" class="btn-secondary">Leaderboard</button>
@@ -2990,7 +2881,6 @@
       <button type="button" id="how-to-play-close" class="btn-primary">Got it</button>
     </div>
   </div>
-<<<<<<< HEAD
   <div id="leaderboard-modal" class="leaderboard-modal hidden" aria-hidden="true" role="dialog" aria-labelledby="leaderboard-title">
     <div class="leaderboard-backdrop"></div>
     <div class="leaderboard-content">
@@ -3037,8 +2927,6 @@
       </div>
     </div>
   </div>
-=======
->>>>>>> 9ee34e4bad371098d87b8d9eb22f0d276d6a469c
   <script type="module" src="js/login-app.js"></script>
 </body>
 </html>
