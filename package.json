@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "Smile Game",
   "scripts": {
-    "start": "npx -y serve -p 3000 --no-port-switching web"
+    "start": "php -S 0.0.0.0:3000 -t web",
+    "start:php": "php -S 0.0.0.0:8080 -t web",
+    "start:static": "npx -y serve -p 3000 --no-port-switching web"
   }
 }

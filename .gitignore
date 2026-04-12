@@ -12,3 +12,6 @@
 out/
 build/
 target/
+
+# Local MySQL overrides (copy from web/api/db.local.example.php)
+web/api/db.local.php

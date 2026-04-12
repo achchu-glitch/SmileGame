@@ -95,3 +95,6 @@ export async function updateDisplayName(user, displayName) {
   if (!user) throw new Error("No user signed in.");
   return updateProfile(user, { displayName: (displayName && displayName.trim()) || "" });
 }
+
+/** Same Firebase Auth instance as the rest of this module (for MySQL sync, etc.). */
+export { auth };

@@ -294,6 +294,74 @@
       box-shadow: 0 0 0 4px var(--accent-subtle);
     }
 
+    .signup-password-hint {
+      margin: -0.35rem 0 1rem;
+      font-size: 0.8125rem;
+    }
+    .signup-password-hint.hidden {
+      display: none;
+    }
+    .signup-password-meter {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 0.65rem;
+    }
+    .signup-password-meter-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 2px;
+      transition: width 0.2s ease, background-color 0.2s ease;
+      background: var(--error);
+    }
+    .signup-password-meter-fill.signup-password-meter--warn {
+      background: #d97706;
+    }
+    .signup-password-meter-fill.signup-password-meter--ok {
+      background: var(--success);
+    }
+    .signup-password-checklist {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      line-height: 1.45;
+    }
+    .signup-password-checklist li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.4rem;
+      margin-bottom: 0.2rem;
+      color: var(--text-muted);
+    }
+    .signup-password-checklist li::before {
+      content: "○";
+      flex-shrink: 0;
+      font-size: 0.55rem;
+      line-height: 1.6;
+      opacity: 0.75;
+    }
+    .signup-password-checklist li.pw-rule-met {
+      color: var(--success);
+    }
+    .signup-password-checklist li.pw-rule-met::before {
+      content: "✓";
+      font-size: 0.7rem;
+      opacity: 1;
+    }
+    .signup-password-checklist li.pw-rule-unmet::before {
+      content: "·";
+      font-size: 1rem;
+      line-height: 1.2;
+      opacity: 0.5;
+    }
+    #auth-form .form-group input.input-signup-pw-warn:not(:focus) {
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+    #auth-form .form-group input.input-signup-pw-ok:not(:focus) {
+      border-color: rgba(5, 150, 105, 0.45);
+    }
+
     .btn-primary {
       width: 100%;
       padding: 0.875rem 1rem;
@@ -429,6 +497,21 @@
       color: var(--text);
       font-weight: 600;
     }
+    #game-area .game-area-footer .mysql-sync-hint {
+      margin: 0;
+      order: 2;
+      font-size: 0.75rem;
+      max-width: 28rem;
+      text-align: center;
+      line-height: 1.35;
+      color: var(--text-muted);
+    }
+    #game-area .game-area-footer .mysql-sync-hint.mysql-sync-hint--error {
+      color: #c2410c;
+    }
+    [data-theme="neon"] #game-area .game-area-footer .mysql-sync-hint.mysql-sync-hint--error {
+      color: #fca5a5;
+    }
     .game-area-footer-actions {
       display: flex;
       gap: 0.6rem;
@@ -549,6 +632,19 @@
       letter-spacing: -0.03em;
       color: var(--text);
       line-height: 1.2;
+    }
+    .mysql-sync-hint-bar {
+      margin: 0.25rem 0 0;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .mysql-sync-hint-bar.mysql-sync-hint--error {
+      color: #c2410c;
+    }
+    [data-theme="neon"] .mysql-sync-hint-bar.mysql-sync-hint--error {
+      color: #fca5a5;
     }
     .game-welcome-tagline {
       margin: 0;
@@ -1172,6 +1268,19 @@
       border-radius: 1px;
       background: linear-gradient(90deg, transparent, var(--accent), transparent);
       opacity: 0.75;
+    }
+    .mysql-sync-hint-bar {
+      margin: 0.35rem 0 0;
+      font-size: 0.7rem;
+      line-height: 1.35;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .mysql-sync-hint-bar.mysql-sync-hint--error {
+      color: #c2410c;
+    }
+    [data-theme="neon"] .mysql-sync-hint-bar.mysql-sync-hint--error {
+      color: #fca5a5;
     }
     .game-welcome-tagline {
       margin: 0.6rem 0 0;
@@ -1983,6 +2092,15 @@
       color: var(--text-muted);
       font-size: 0.9375rem;
     }
+    #leaderboard-status {
+      text-align: center;
+      padding: 0.35rem 1rem 0.75rem;
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+    }
+    #leaderboard-status.hidden {
+      display: none;
+    }
 
     /* Rating & feedback modal */
     .rating-feedback-modal {
@@ -2670,6 +2788,17 @@
           <label for="password">Password</label>
           <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="••••••••" />
         </div>
+        <div id="signup-password-hint" class="signup-password-hint hidden" aria-live="polite">
+          <div class="signup-password-meter" role="presentation">
+            <div id="signup-password-meter-fill" class="signup-password-meter-fill"></div>
+          </div>
+          <ul class="signup-password-checklist" id="signup-password-checklist">
+            <li data-rule="len6">At least 6 characters (required)</li>
+            <li data-rule="len8">8+ characters (recommended)</li>
+            <li data-rule="letter">Contains a letter</li>
+            <li data-rule="number">Contains a number</li>
+          </ul>
+        </div>
         <div id="signup-name-wrap" class="hidden">
           <div class="form-group">
             <label for="display-name-signup">Display name (optional)</label>
@@ -2729,6 +2858,7 @@
         <button type="button" id="how-to-play-btn" class="btn-how-to-play btn-how-to-play--bar" aria-label="How to play" title="How to play">?</button>
         <div class="game-welcome">
           <h1 class="game-welcome-headline">Train your brain.</h1>
+          <p id="mysql-sync-hint-bar" class="mysql-sync-hint-bar hidden" role="status" aria-live="polite"></p>
         </div>
         <button type="button" id="profile-avatar-btn" class="profile-avatar-btn" aria-label="Open profile" title="Profile">
           <span id="profile-avatar-display" class="profile-avatar-display">😊</span>
@@ -2857,6 +2987,7 @@
           <button type="button" class="theme-btn theme-btn-neon" data-theme="neon" aria-pressed="false" title="Neon">✨</button>
         </div>
         <p class="user-email">Signed in as <strong id="user-email"></strong></p>
+        <p id="mysql-sync-hint" class="mysql-sync-hint hidden" role="status" aria-live="polite"></p>
         <div class="game-area-footer-actions">
           <button type="button" id="leaderboard-btn" class="btn-secondary">Leaderboard</button>
           <button type="button" id="rating-feedback-btn" class="btn-secondary" title="Rate the game and send feedback">⭐ Rate & feedback</button>
@@ -2887,8 +3018,9 @@
       <button type="button" id="leaderboard-close" class="leaderboard-close" aria-label="Close leaderboard">×</button>
       <div class="leaderboard-header">
         <h2 id="leaderboard-title" class="leaderboard-title"><span class="leaderboard-title-icon">🏆</span> Leaderboard</h2>
-        <p class="leaderboard-subtitle">Top players · Compete and climb</p>
+        <p id="leaderboard-subtitle" class="leaderboard-subtitle">Live rankings · Registered players only</p>
       </div>
+      <p id="leaderboard-status" class="hidden" role="status" aria-live="polite"></p>
       <div id="leaderboard-podium" class="leaderboard-podium" aria-label="Top 3 players">
         <!-- Top 3 filled by JS -->
       </div>

@@ -1,5 +1,14 @@
-import { login, signUp, onAuthChange, logout, loginWithGoogle, sendPhoneVerificationCode, verifyPhoneCode, updateDisplayName } from "./auth.js";
-import { db, collection, addDoc, serverTimestamp } from "./firebase-config.js";
+import {
+  login,
+  signUp,
+  onAuthChange,
+  logout,
+  loginWithGoogle,
+  sendPhoneVerificationCode,
+  verifyPhoneCode,
+  updateDisplayName,
+  auth,
+} from "./auth.js";
 
 if (window.location.protocol === "file:") {
   document.body.innerHTML = "<div style='font-family: system-ui; max-width: 420px; margin: 2rem auto; padding: 1.5rem; background: #1e293b; color: #e2e8f0; border-radius: 8px;'>" +
@@ -32,6 +41,9 @@ const phoneCancelBtn = document.getElementById("phone-cancel-btn");
 const recaptchaPhoneContainer = document.getElementById("recaptcha-phone-container");
 const socialSigninSection = document.getElementById("social-signin-section");
 const signupNameWrap = document.getElementById("signup-name-wrap");
+const signupPasswordHint = document.getElementById("signup-password-hint");
+const signupPasswordMeterFill = document.getElementById("signup-password-meter-fill");
+const signupPasswordChecklist = document.getElementById("signup-password-checklist");
 const displayNameSignupInput = document.getElementById("display-name-signup");
 const profileBtn = document.getElementById("profile-btn");
 const profileDisplayNameInput = document.getElementById("profile-display-name");
@@ -86,6 +98,90 @@ if (!form || !submitBtn || !loginFormEl || !gameAreaEl) {
 let isSignUp = false;
 let phoneConfirmationResult = null;
 let currentUser = null;
+
+/** Firebase email/password minimum length */
+const SIGNUP_PASSWORD_MIN_LEN = 6;
+
+function getSignupPasswordChecks(pw) {
+  return {
+    len6: pw.length >= SIGNUP_PASSWORD_MIN_LEN,
+    len8: pw.length >= 8,
+    letter: /[a-zA-Z\u00C0-\u024F]/.test(pw),
+    number: /\d/.test(pw),
+  };
+}
+
+function isSignupPasswordAcceptable(pw) {
+  return getSignupPasswordChecks(pw).len6;
+}
+
+function clearSignupPasswordRuleUi() {
+  if (signupPasswordChecklist) {
+    signupPasswordChecklist.querySelectorAll("li[data-rule]").forEach((li) => {
+      li.classList.remove("pw-rule-met", "pw-rule-unmet");
+    });
+  }
+  if (signupPasswordMeterFill) {
+    signupPasswordMeterFill.style.width = "0%";
+    signupPasswordMeterFill.classList.remove("signup-password-meter--warn", "signup-password-meter--ok");
+  }
+  if (passwordInput) {
+    passwordInput.classList.remove("input-signup-pw-warn", "input-signup-pw-ok");
+  }
+}
+
+function setSignupPasswordMeterFill(score01) {
+  if (!signupPasswordMeterFill) return;
+  const pct = Math.round(Math.max(0, Math.min(1, score01)) * 100);
+  signupPasswordMeterFill.style.width = `${pct}%`;
+  signupPasswordMeterFill.classList.remove("signup-password-meter--warn", "signup-password-meter--ok");
+  if (pct >= 100) {
+    signupPasswordMeterFill.classList.add("signup-password-meter--ok");
+  } else if (pct >= 50) {
+    signupPasswordMeterFill.classList.add("signup-password-meter--warn");
+  }
+}
+
+function updateSignupPasswordValidation() {
+  if (!isSignUp || !signupPasswordHint || signupPasswordHint.classList.contains("hidden")) {
+    return;
+  }
+  const pw = passwordInput ? passwordInput.value : "";
+  const c = getSignupPasswordChecks(pw);
+  const metCount = [c.len6, c.len8, c.letter, c.number].filter(Boolean).length;
+  setSignupPasswordMeterFill(metCount / 4);
+
+  if (signupPasswordChecklist) {
+    signupPasswordChecklist.querySelectorAll("li[data-rule]").forEach((li) => {
+      const key = li.getAttribute("data-rule");
+      li.classList.remove("pw-rule-met", "pw-rule-unmet");
+      if (!key || !(key in c)) return;
+      if (pw.length === 0) return;
+      li.classList.add(c[key] ? "pw-rule-met" : "pw-rule-unmet");
+    });
+  }
+
+  if (passwordInput && pw.length > 0) {
+    passwordInput.classList.toggle("input-signup-pw-ok", c.len6);
+    passwordInput.classList.toggle("input-signup-pw-warn", !c.len6);
+  } else if (passwordInput) {
+    passwordInput.classList.remove("input-signup-pw-warn", "input-signup-pw-ok");
+  }
+}
+
+function syncSignupPasswordUiVisibility() {
+  if (signupPasswordHint) {
+    if (isSignUp) signupPasswordHint.classList.remove("hidden");
+    else {
+      signupPasswordHint.classList.add("hidden");
+      clearSignupPasswordRuleUi();
+    }
+  }
+  if (passwordInput) {
+    passwordInput.setAttribute("autocomplete", isSignUp ? "new-password" : "current-password");
+  }
+  if (isSignUp) updateSignupPasswordValidation();
+}
 
 /** Firebase Console link for this project (Authentication → Sign-in method) */
 const FIREBASE_AUTH_CONSOLE_URL = "https://console.firebase.google.com/project/smilegame-f0d54/authentication/providers";
@@ -150,6 +246,106 @@ function setLoading(loading) {
   }
 }
 
+const SMILEGAME_MYSQL_USER_ID_KEY = "smilegame_mysql_user_id";
+
+/** Password to send to register.php on the next sync (Firebase may fire onAuthChange before uid-pending is set). */
+const pendingMysqlPasswordByUid = Object.create(null);
+const pendingMysqlPasswordByEmail = Object.create(null);
+
+function stashMysqlPasswordForSync(email, uid, password) {
+  if (password === undefined || password === null || password === "") return;
+  if (uid) pendingMysqlPasswordByUid[uid] = password;
+  if (email && String(email).trim()) {
+    pendingMysqlPasswordByEmail[String(email).trim().toLowerCase()] = password;
+  }
+}
+
+function clearPendingMysqlPassword(user) {
+  if (!user) return;
+  delete pendingMysqlPasswordByUid[user.uid];
+  const em = user.email ? String(user.email).trim().toLowerCase() : "";
+  if (em) delete pendingMysqlPasswordByEmail[em];
+}
+
+function setMysqlSyncHint(text, isError) {
+  document.querySelectorAll("#mysql-sync-hint, #mysql-sync-hint-bar").forEach((el) => {
+    el.textContent = text || "";
+    el.classList.toggle("hidden", !text);
+    el.classList.toggle("mysql-sync-hint--error", !!isError);
+  });
+}
+
+/** Sync Firebase user to MySQL `users` (requires `npm start` so PHP serves port 3000). */
+async function syncMysqlUser(user) {
+  if (!user || !user.uid) return;
+  setMysqlSyncHint("Saving profile to database…", false);
+  const username = (
+    (user.displayName && user.displayName.trim()) ||
+    (user.email && user.email.split("@")[0]) ||
+    (user.phoneNumber && user.phoneNumber.replace(/\D/g, "")) ||
+    user.uid.slice(0, 12)
+  ).trim() || user.uid.slice(0, 12);
+  const email = (user.email && user.email.trim()) || "";
+  const registerUrl = new URL("api/register.php", window.location.href).href;
+  const emailKey = email ? email.trim().toLowerCase() : "";
+  const pendingPw =
+    pendingMysqlPasswordByUid[user.uid] ??
+    (emailKey ? pendingMysqlPasswordByEmail[emailKey] : undefined);
+  const params = {
+    firebase_uid: user.uid,
+    username,
+    email,
+  };
+  if (pendingPw !== undefined && pendingPw !== "") {
+    params.password = pendingPw;
+  }
+  try {
+    const response = await fetch(registerUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(params).toString(),
+    });
+    const raw = await response.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      const trimmed = raw.trim();
+      const isHtml = trimmed.startsWith("<") || trimmed.startsWith("<!");
+      const snippet = trimmed.slice(0, 120).replace(/\s+/g, " ");
+      const msg = isHtml
+        ? `api/register.php returned HTML (not PHP/JSON). Use terminal in project folder: npm start — do not use Live Server or npm run start:static. ${snippet.slice(0, 80)}…`
+        : `api/register.php did not return JSON: ${snippet || "(empty response)"}`;
+      setMysqlSyncHint(msg, true);
+      console.error("[MySQL sync] Expected JSON, got:", raw.slice(0, 500));
+      return;
+    }
+    if (!data.success) {
+      const detail = data.detail ? ` (${data.detail})` : "";
+      setMysqlSyncHint(`${data.message || "Database error"}${detail}. Open /api/health.php to test MySQL.`, true);
+      console.warn("[MySQL sync]", data.message, data.detail || "");
+      return;
+    }
+    if (pendingPw !== undefined && pendingPw !== "") {
+      clearPendingMysqlPassword(user);
+    }
+    try {
+      if (data.user_id != null && data.user_id !== "") {
+        localStorage.setItem(SMILEGAME_MYSQL_USER_ID_KEY, String(data.user_id));
+      }
+    } catch (_) {}
+    const okMsg =
+      data.user_id != null && data.user_id !== ""
+        ? `Profile saved to MySQL · user #${data.user_id}`
+        : "Profile saved to MySQL";
+    setMysqlSyncHint(okMsg, false);
+    window.setTimeout(() => setMysqlSyncHint("", false), 6000);
+  } catch (e) {
+    setMysqlSyncHint("Could not reach api/register.php. Use npm start (PHP), not npm run start:static.", true);
+    console.warn("[MySQL sync] Network error:", e);
+  }
+}
+
 /**
  * Handle form submit: Firebase sign-in or sign-up depending on mode.
  */
@@ -163,26 +359,72 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
+  if (isSignUp && !isSignupPasswordAcceptable(password)) {
+    showMessage(`Password must be at least ${SIGNUP_PASSWORD_MIN_LEN} characters.`);
+    return;
+  }
+
   showMessage("");
   setLoading(true);
 
   try {
     if (isSignUp) {
+      stashMysqlPasswordForSync(email, null, password);
       const cred = await signUp(email, password);
+      stashMysqlPasswordForSync(email, cred.user.uid, password);
       const name = displayNameSignupInput ? displayNameSignupInput.value.trim() : "";
+
       if (name) {
         try {
           await updateDisplayName(cred.user, name);
         } catch (nameErr) {
           console.warn("Display name update failed:", nameErr);
-          // User is still signed in; onAuthStateChanged will show game
         }
       }
+
+      try {
+        const registerUrl = new URL("api/register.php", window.location.href).href;
+        const response = await fetch(registerUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            firebase_uid: cred.user.uid,
+            username: name || email.split("@")[0],
+            email: cred.user.email || email,
+            password: password,
+          }).toString(),
+        });
+        const raw = await response.text();
+        let data;
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          console.warn("MySQL signup register: not JSON", raw.slice(0, 200));
+          data = { success: false };
+        }
+        if (data.success && data.user_id != null && data.user_id !== "") {
+          try {
+            localStorage.setItem(SMILEGAME_MYSQL_USER_ID_KEY, String(data.user_id));
+          } catch (_) {}
+        }
+        if (data.success) {
+          clearPendingMysqlPassword(cred.user);
+        }
+        if (!data.success) {
+          console.warn("MySQL signup register:", data.message, data.detail || "");
+        }
+      } catch (phpErr) {
+        console.warn("MySQL signup register error:", phpErr);
+      }
+
       showMessage("Account created. You are now logged in.", false);
     } else {
       await login(email, password);
-      // onAuthStateChanged will show game area
+      const lu = auth.currentUser;
+      if (lu) stashMysqlPasswordForSync(email, lu.uid, password);
     }
+    const u = auth.currentUser;
+    if (u) void syncMysqlUser(u);
   } catch (err) {
     console.error("Firebase auth error:", err.code, err.message, err);
     const code = err.code || "";
@@ -220,8 +462,15 @@ toggleModeLink.addEventListener("click", (e) => {
     if (phoneAuthSection) phoneAuthSection.classList.add("hidden");
     if (recaptchaPhoneContainer) recaptchaPhoneContainer.innerHTML = "";
   }
+  syncSignupPasswordUiVisibility();
   showMessage("");
 });
+
+if (passwordInput) {
+  passwordInput.addEventListener("input", () => {
+    if (isSignUp) updateSignupPasswordValidation();
+  });
+}
 
 /**
  * Smile game state (matches Java GameEngine: two images, correct answer is 1).
@@ -297,35 +546,72 @@ const LEVEL_ORDER = ["easy", "medium", "hard"];
 // Lightweight built-in synth sounds (no external audio files required).
 let audioCtx = null;
 let audioUnlocked = false;
+let audioUnlockPromise = null;
+
+function getAudioContextClass() {
+  return window.AudioContext || window.webkitAudioContext || null;
+}
+
+/** Create context if needed and resume until `running` (browsers start suspended until a user gesture unlocks). */
+function unlockAudioContext() {
+  const Ctor = getAudioContextClass();
+  if (!Ctor) return Promise.resolve(null);
+  if (!audioCtx) audioCtx = new Ctor();
+  const ctx = audioCtx;
+  if (ctx.state === "running") {
+    audioUnlocked = true;
+    return Promise.resolve(ctx);
+  }
+  if (!audioUnlockPromise) {
+    audioUnlockPromise = ctx.resume().then(
+      () => {
+        audioUnlockPromise = null;
+        audioUnlocked = true;
+        return ctx;
+      },
+      (err) => {
+        audioUnlockPromise = null;
+        console.warn("[audio] resume failed", err);
+        return ctx;
+      }
+    );
+  }
+  return audioUnlockPromise;
+}
 
 function ensureAudioContext() {
-  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContextClass) return null;
-  if (!audioCtx) audioCtx = new AudioContextClass();
-  if (audioCtx.state === "suspended") {
-    void audioCtx.resume().then(() => { audioUnlocked = true; }).catch(() => {});
-  } else {
-    audioUnlocked = true;
-  }
+  const Ctor = getAudioContextClass();
+  if (!Ctor) return null;
+  if (!audioCtx) audioCtx = new Ctor();
+  void unlockAudioContext();
   return audioCtx;
 }
 
-function playTone(freq, durationSec, type = "sine", volume = 0.035, startDelaySec = 0) {
-  const ctx = ensureAudioContext();
-  if (!ctx || freq <= 0) return;
-  const t0 = ctx.currentTime + Math.max(0, startDelaySec);
-  const t1 = t0 + Math.max(0.02, durationSec);
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, t0);
-  gain.gain.setValueAtTime(0.0001, t0);
-  gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.01);
-  gain.gain.exponentialRampToValueAtTime(0.0001, t1);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start(t0);
-  osc.stop(t1 + 0.02);
+function playTone(freq, durationSec, type = "sine", volume = 0.06, startDelaySec = 0) {
+  if (freq <= 0) return;
+  void unlockAudioContext().then((ctx) => {
+    if (!ctx) return;
+    try {
+      const t0 = ctx.currentTime + Math.max(0, startDelaySec);
+      const t1 = t0 + Math.max(0.03, durationSec);
+      const attackEnd = t0 + 0.02;
+      const peak = Math.min(volume, 0.35);
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const safeTypes = ["sine", "square", "sawtooth", "triangle"];
+      osc.type = safeTypes.includes(type) ? type : "sine";
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(peak, attackEnd);
+      gain.gain.linearRampToValueAtTime(peak, t1);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t1 + 0.03);
+    } catch (e) {
+      console.warn("[audio] playTone", e);
+    }
+  });
 }
 
 function playCorrectSound(comboMultiplier) {
@@ -349,7 +635,6 @@ function playWinSound() {
 }
 
 function playFirstClassSound() {
-  // A brighter "first class" fanfare.
   playTone(659.25, 0.1, "square", 0.028, 0);
   playTone(783.99, 0.1, "square", 0.028, 0.09);
   playTone(987.77, 0.13, "square", 0.03, 0.18);
@@ -923,6 +1208,7 @@ function endGame(message) {
     if (gameScore >= FIRST_CLASS_SCORE) playFirstClassSound();
     startWinSparkle();
     saveProfileStatsAfterGame(gameScore, bestStreakThisGame);
+    void postScoreToLeaderboard(gameScore);
     sessionBestScore = Math.max(sessionBestScore, gameScore);
     unlockNextLevelAfterWin(currentLevel);
     updateLevelButtonsUnlocked();
@@ -1081,7 +1367,6 @@ function getExplainMistakeMessage(answered) {
 }
 
 function checkSolution(answered) {
-  // Unlock audio on first gameplay interaction (browser autoplay policy).
   ensureAudioContext();
   if (gameOver) return false;
   if (isLoadingPuzzle) return false;
@@ -1239,6 +1524,7 @@ function initGame() {
 onAuthChange((user) => {
   currentUser = user;
   if (user) {
+    void syncMysqlUser(user);
     loginFormEl.classList.add("hidden");
     gameAreaEl.classList.add("visible");
     const displayLabel = user.displayName || user.email || user.phoneNumber || user.uid;
@@ -1262,6 +1548,7 @@ if (googleBtn) {
     googleBtn.disabled = true;
     try {
       await loginWithGoogle();
+      if (auth.currentUser) void syncMysqlUser(auth.currentUser);
     } catch (err) {
       console.error("Google sign-in error:", err.code, err.message, err);
       const code = err.code || "";
@@ -1324,21 +1611,21 @@ if (sendCodeBtn) {
       }
       showMessage("Code sent. Enter it above.", false);
     } catch (err) {
-    console.error("Phone auth error:", err.code, err.message, err);
-    const code = err.code || "";
-    const message =
-      getAuthErrorMessage(code) ||
-      (err.message || "").trim() ||
-      "Something went wrong. Use a phone number with country code (e.g. +1 2345678900).";
-    if (code === "auth/operation-not-allowed" || code === "auth/unauthorized-domain") {
-      showMessageWithConsoleLink(message);
-    } else {
-      showMessage(message);
+      console.error("Phone auth error:", err.code, err.message, err);
+      const code = err.code || "";
+      const message =
+        getAuthErrorMessage(code) ||
+        (err.message || "").trim() ||
+        "Something went wrong. Use a phone number with country code (e.g. +1 2345678900).";
+      if (code === "auth/operation-not-allowed" || code === "auth/unauthorized-domain") {
+        showMessageWithConsoleLink(message);
+      } else {
+        showMessage(message);
+      }
+    } finally {
+      sendCodeBtn.disabled = false;
     }
-  } finally {
-    sendCodeBtn.disabled = false;
-  }
-});
+  });
 }
 
 /** Verify phone code and sign in */
@@ -1356,6 +1643,7 @@ if (verifyCodeBtn) {
       if (phoneAuthSection) phoneAuthSection.classList.add("hidden");
       phoneConfirmationResult = null;
       if (recaptchaPhoneContainer) recaptchaPhoneContainer.innerHTML = "";
+      if (auth.currentUser) void syncMysqlUser(auth.currentUser);
     } catch (err) {
       console.error("Verify code error:", err.code, err.message, err);
       const errCode = err.code || "";
@@ -1600,48 +1888,130 @@ function escapeHtml(s) {
   return div.innerHTML;
 }
 
-function getLeaderboardData() {
-  const stats = getProfileStats();
-  const currentUserName = (currentUser && (currentUser.displayName || currentUser.email))
-    ? (currentUser.displayName || currentUser.email.split("@")[0])
-    : "You";
-  const entries = [
-    { name: "BrainMaster", score: 2840, avatar: "🧠", badges: ["🏆", "🔥"] },
-    { name: "NumberNinja", score: 2620, avatar: "🥷", badges: ["🏆", "⭐"] },
-    { name: "PuzzlePro", score: 2510, avatar: "🎯", badges: ["🏆"] },
-    { name: "QuickMind", score: 2380, avatar: "⚡", badges: ["🔥"] },
-    { name: "MathWiz", score: 2190, avatar: "📐", badges: [] },
-    { name: "SmileChamp", score: 2050, avatar: "😊", badges: [] },
-  ];
-  if (stats.best > 0) {
-    const myEntry = { name: currentUserName, score: stats.best, avatar: getStoredAvatar(), badges: stats.streak >= 5 ? ["🔥"] : [] };
-    const merged = entries.filter((e) => e.name !== currentUserName);
-    merged.push(myEntry);
-    merged.sort((a, b) => b.score - a.score);
-    return merged.slice(0, 10).map((e, i) => ({ ...e, rank: i + 1 }));
+function getMysqlUserIdFromStorage() {
+  try {
+    const raw = localStorage.getItem(SMILEGAME_MYSQL_USER_ID_KEY);
+    const n = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch (_) {
+    return 0;
   }
-  return entries.map((e, i) => ({ ...e, rank: i + 1 }));
 }
 
-function openLeaderboard() {
-  const modal = document.getElementById("leaderboard-modal");
+/** Deterministic avatar for leaderboard rows (MySQL has no emoji column). */
+function leaderboardAvatarForUsername(username) {
+  const s = typeof username === "string" ? username : "";
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) {
+    h = (h * 31 + s.charCodeAt(i)) | 0;
+  }
+  const idx = Math.abs(h) % PROFILE_AVATARS.length;
+  return PROFILE_AVATARS[idx];
+}
+
+function crownEmojiForRank(rank) {
+  if (rank === 1) return "👑";
+  if (rank === 2) return "🥈";
+  if (rank === 3) return "🥉";
+  return "";
+}
+
+async function fetchLeaderboardFromApi() {
+  try {
+    const url = new URL("api/leaderboard.php", window.location.href).href;
+    const response = await fetch(url, { method: "GET", cache: "no-store" });
+    const raw = await response.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      return {
+        ok: false,
+        rows: [],
+        errorMessage: "Server did not return JSON. Run npm start (PHP + MySQL), not static-only hosting.",
+      };
+    }
+    if (!data.success || !Array.isArray(data.leaderboard)) {
+      return {
+        ok: false,
+        rows: [],
+        errorMessage: typeof data.message === "string" && data.message ? data.message : "Could not load leaderboard.",
+      };
+    }
+    return { ok: true, rows: data.leaderboard };
+  } catch (e) {
+    console.warn("[leaderboard] fetch", e);
+    return { ok: false, rows: [], errorMessage: "Network error. Check your connection." };
+  }
+}
+
+async function postScoreToLeaderboard(score) {
+  const userId = getMysqlUserIdFromStorage();
+  const n = Math.floor(Number(score) || 0);
+  if (userId <= 0 || n <= 0) return;
+  try {
+    const registerUrl = new URL("api/save_score.php", window.location.href).href;
+    const response = await fetch(registerUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        user_id: String(userId),
+        score: String(n),
+      }).toString(),
+    });
+    const raw = await response.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    if (data.success) {
+      const modal = document.getElementById("leaderboard-modal");
+      if (modal && !modal.classList.contains("hidden")) {
+        void refreshLeaderboardUi({ isFirstOpen: false });
+      }
+    }
+  } catch (e) {
+    console.warn("[leaderboard] save score", e);
+  }
+}
+
+let leaderboardPollTimer = null;
+let leaderboardRefreshGeneration = 0;
+let leaderboardModalOpen = false;
+
+function mapApiRowsToLeaderboardEntries(rows) {
+  return rows.map((row, i) => {
+    const name = row.username != null && String(row.username).trim() !== "" ? String(row.username).trim() : "Player";
+    const score = Math.max(0, parseInt(row.best_score, 10) || 0);
+    return {
+      rank: i + 1,
+      name,
+      score,
+      avatar: leaderboardAvatarForUsername(name),
+      badges: [],
+    };
+  });
+}
+
+function renderLeaderboardEntries(entries) {
   const podium = document.getElementById("leaderboard-podium");
   const list = document.getElementById("leaderboard-list");
   const empty = document.getElementById("leaderboard-empty");
-  if (!modal || !podium || !list) return;
-  const data = getLeaderboardData();
+  if (!podium || !list) return;
   podium.innerHTML = "";
   list.innerHTML = "";
-  const top3 = data.slice(0, 3);
-  const rest = data.slice(3);
-  const crowns = ["🥈", "👑", "🥉"];
-  top3.forEach((entry, i) => {
-    const rank = i + 1;
+  const top3 = entries.slice(0, 3);
+  const rest = entries.slice(3);
+  top3.forEach((entry) => {
+    const rank = entry.rank;
     const div = document.createElement("div");
     div.className = `leaderboard-podium-item rank-${rank}`;
-    div.setAttribute("aria-label", `${rank === 1 ? "First" : rank === 2 ? "Second" : "Third"} place: ${entry.name}, ${entry.score} points`);
+    const placeLabel = rank === 1 ? "First" : rank === 2 ? "Second" : "Third";
+    div.setAttribute("aria-label", `${placeLabel} place: ${entry.name}, ${entry.score} points`);
     div.innerHTML = `
-      <span class="leaderboard-podium-crown" aria-hidden="true">${crowns[i]}</span>
+      <span class="leaderboard-podium-crown" aria-hidden="true">${crownEmojiForRank(rank)}</span>
       <div class="leaderboard-podium-avatar" aria-hidden="true">${entry.avatar}</div>
       <span class="leaderboard-podium-name">${escapeHtml(entry.name)}</span>
       <span class="leaderboard-podium-score">${entry.score.toLocaleString()}</span>
@@ -1659,15 +2029,104 @@ function openLeaderboard() {
     list.appendChild(li);
   });
   if (empty) {
-    empty.classList.toggle("hidden", data.length > 0);
+    empty.classList.add("hidden");
   }
   list.classList.toggle("hidden", rest.length === 0);
+}
+
+async function refreshLeaderboardUi(opts = {}) {
+  const isFirstOpen = Boolean(opts.isFirstOpen);
+  const modal = document.getElementById("leaderboard-modal");
+  const podium = document.getElementById("leaderboard-podium");
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  const statusEl = document.getElementById("leaderboard-status");
+  if (!modal || !podium || !list) return;
+
+  const gen = ++leaderboardRefreshGeneration;
+
+  if (isFirstOpen && statusEl) {
+    statusEl.textContent = "Loading rankings…";
+    statusEl.classList.remove("hidden");
+    podium.innerHTML = "";
+    list.innerHTML = "";
+    if (empty) empty.classList.add("hidden");
+    list.classList.add("hidden");
+  }
+
+  const result = await fetchLeaderboardFromApi();
+  if (!leaderboardModalOpen || gen !== leaderboardRefreshGeneration) return;
+
+  if (statusEl) {
+    statusEl.textContent = "";
+    statusEl.classList.add("hidden");
+  }
+
+  if (!result.ok) {
+    if (isFirstOpen) {
+      if (empty) {
+        empty.textContent = result.errorMessage || "Could not load rankings.";
+        empty.classList.remove("hidden");
+      }
+      podium.innerHTML = "";
+      list.innerHTML = "";
+      list.classList.add("hidden");
+    } else if (podium.childNodes.length > 0 && statusEl) {
+      statusEl.textContent = "Could not refresh — showing last results";
+      statusEl.classList.remove("hidden");
+      window.setTimeout(() => {
+        if (statusEl && statusEl.textContent.startsWith("Could not refresh")) {
+          statusEl.classList.add("hidden");
+        }
+      }, 4000);
+    }
+    return;
+  }
+
+  const entries = mapApiRowsToLeaderboardEntries(result.rows);
+  if (entries.length === 0) {
+    renderLeaderboardEntries([]);
+    if (empty) {
+      empty.textContent = "No scores yet. Finish a game while signed in (MySQL profile) to post your first score.";
+      empty.classList.remove("hidden");
+    }
+    list.classList.add("hidden");
+    return;
+  }
+
+  renderLeaderboardEntries(entries);
+}
+
+async function openLeaderboard() {
+  const modal = document.getElementById("leaderboard-modal");
+  if (!modal) return;
+  if (leaderboardPollTimer != null) {
+    window.clearInterval(leaderboardPollTimer);
+    leaderboardPollTimer = null;
+  }
+  leaderboardModalOpen = true;
   modal.classList.remove("hidden");
   modal.setAttribute("aria-hidden", "false");
+  await refreshLeaderboardUi({ isFirstOpen: true });
+  if (!leaderboardModalOpen) return;
+  leaderboardPollTimer = window.setInterval(() => {
+    void refreshLeaderboardUi({ isFirstOpen: false });
+  }, 7000);
 }
 
 function closeLeaderboard() {
+  leaderboardModalOpen = false;
+  leaderboardRefreshGeneration += 1;
+  if (leaderboardPollTimer != null) {
+    window.clearInterval(leaderboardPollTimer);
+    leaderboardPollTimer = null;
+  }
   const modal = document.getElementById("leaderboard-modal");
+  const statusEl = document.getElementById("leaderboard-status");
+  if (statusEl) {
+    statusEl.textContent = "";
+    statusEl.classList.add("hidden");
+  }
   if (modal) {
     modal.classList.add("hidden");
     modal.setAttribute("aria-hidden", "true");
@@ -1676,8 +2135,8 @@ function closeLeaderboard() {
 
 const leaderboardBtn = document.getElementById("leaderboard-btn");
 const leaderboardClose = document.getElementById("leaderboard-close");
-const leaderboardBackdrop = document.querySelector(".leaderboard-backdrop");
-if (leaderboardBtn) leaderboardBtn.addEventListener("click", openLeaderboard);
+const leaderboardBackdrop = document.querySelector("#leaderboard-modal .leaderboard-backdrop");
+if (leaderboardBtn) leaderboardBtn.addEventListener("click", () => { void openLeaderboard(); });
 if (leaderboardClose) leaderboardClose.addEventListener("click", closeLeaderboard);
 if (leaderboardBackdrop) leaderboardBackdrop.addEventListener("click", closeLeaderboard);
 
@@ -1720,19 +2179,33 @@ function closeRatingFeedbackModal() {
 }
 
 async function submitRatingFeedback(rating, comment) {
-  const payload = {
-    rating: Math.min(5, Math.max(1, Number(rating) || 0)),
-    comment: typeof comment === "string" ? comment.trim().slice(0, 1000) : "",
-    createdAt: serverTimestamp(),
-  };
-  if (currentUser) {
-    payload.userId = currentUser.uid;
-    payload.userEmail = currentUser.email || null;
-    payload.displayName = currentUser.displayName || null;
-  } else {
-    payload.userId = null;
+  const cleanRating = Math.min(5, Math.max(1, Number(rating) || 0));
+  const cleanComment = typeof comment === "string" ? comment.trim().slice(0, 1000) : "";
+
+  let mysqlUserId = 0;
+  try {
+    const raw = localStorage.getItem(SMILEGAME_MYSQL_USER_ID_KEY);
+    mysqlUserId = raw ? Math.max(0, parseInt(raw, 10) || 0) : 0;
+  } catch (_) {}
+  const formData = new URLSearchParams();
+  formData.append("user_id", String(mysqlUserId));
+  formData.append("rating", cleanRating);
+  formData.append("comment", cleanComment);
+
+  const response = await fetch("api/feedback.php", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: formData.toString()
+  });
+
+  const data = await response.json();
+
+  if (!data.success) {
+    throw new Error(data.message || "Could not save feedback");
   }
-  await addDoc(collection(db, "feedback"), payload);
+
   try {
     localStorage.setItem(RATING_FEEDBACK_STORAGE_KEY, "1");
   } catch (_) {}
@@ -1784,9 +2257,7 @@ if (ratingFeedbackSubmit) {
     } catch (e) {
       console.error("Submit feedback error:", e);
       if (errorEl) {
-        const msg = e && e.code === "permission-denied"
-          ? "Feedback is not allowed (check Firestore rules)."
-          : (e && e.message) || "Couldn’t send. Check your connection and try again.";
+        const msg = (e && e.message) || "Couldn’t send. Check your connection and try again.";
         errorEl.textContent = msg;
         errorEl.classList.remove("hidden");
       }

@@ -1,14 +1,29 @@
 SMILE GAME - HOW TO RUN
 =======================
 
-1. Open a terminal in the PROJECT FOLDER (the folder that contains this "web" folder).
+WEB APP (Firebase login + game + MySQL user sync)
+-------------------------------------------------
+From the PROJECT FOLDER (contains package.json and web/):
 
-2. Run:
-   npm start
+  npm start
 
-3. Open your browser and go to the URL shown in the terminal, e.g.:
-   http://localhost:3000
+Then open: http://localhost:3000  (server listens on 0.0.0.0:3000 so localhost works)
 
-4. Sign in with email or Google, then play the game.
+This uses PHP’s built-in server on port 3000 so web/api/register.php runs and the
+`smilegame.users` table can update. You must have `php` in your PATH (or use MAMP’s
+PHP in the terminal).
 
-If you see 404: make sure you ran "npm start" from the folder that contains "web", and use the exact URL the terminal shows.
+If MySQL is not on port 3306 (e.g. MAMP → 8889), copy:
+  web/api/db.local.example.php  →  web/api/db.local.php
+and edit db.local.php with your port and password.
+
+Static hosting only (Firebase game works, NO MySQL / PHP):
+  npm run start:static
+
+PHP on port 8080 if 3000 is already in use:
+  npm run start:php
+  → http://localhost:8080
+
+Database setup: web/api/schema.sql
+
+Java desktop: see root README.md
