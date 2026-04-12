@@ -17,7 +17,7 @@ SmileGame is a browser-based puzzle game with **Firebase Authentication** and an
 |------|--------|
 | Web UI | HTML, CSS, JavaScript (ES modules) |
 | Auth | Firebase Authentication |
-| Game server (optional) | PHP 8+, MySQL 5.7+ / 8+ |
+| Game server | PHP 8+, MySQL 5.7+ / 8+ |
 | Desktop | Java (`src/com/perisic/smile/`) |
 
 ## Quick start (web, full stack)
