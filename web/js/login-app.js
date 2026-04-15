@@ -22,6 +22,7 @@ if (window.location.protocol === "file:") {
 const form = document.getElementById("auth-form");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
+const confirmPasswordInput = document.getElementById("confirm-password");
 const submitBtn = document.getElementById("submit-btn");
 const formMessage = document.getElementById("form-message");
 const toggleModeLink = document.getElementById("toggle-mode");
@@ -41,6 +42,7 @@ const phoneCancelBtn = document.getElementById("phone-cancel-btn");
 const recaptchaPhoneContainer = document.getElementById("recaptcha-phone-container");
 const socialSigninSection = document.getElementById("social-signin-section");
 const signupNameWrap = document.getElementById("signup-name-wrap");
+const signupConfirmWrap = document.getElementById("signup-confirm-wrap");
 const signupPasswordHint = document.getElementById("signup-password-hint");
 const signupPasswordMeterFill = document.getElementById("signup-password-meter-fill");
 const signupPasswordChecklist = document.getElementById("signup-password-checklist");
@@ -180,8 +182,35 @@ function syncSignupPasswordUiVisibility() {
   if (passwordInput) {
     passwordInput.setAttribute("autocomplete", isSignUp ? "new-password" : "current-password");
   }
+  if (signupConfirmWrap) {
+    signupConfirmWrap.classList.toggle("hidden", !isSignUp);
+  }
+  if (confirmPasswordInput) {
+    confirmPasswordInput.required = isSignUp;
+    if (!isSignUp) confirmPasswordInput.value = "";
+  }
   if (isSignUp) updateSignupPasswordValidation();
 }
+
+function updatePasswordToggleButton(btn, isVisible) {
+  if (!btn) return;
+  btn.textContent = isVisible ? "🙈" : "👁";
+  btn.setAttribute("aria-label", isVisible ? "Hide password" : "Show password");
+  btn.setAttribute("title", isVisible ? "Hide password" : "Show password");
+}
+
+document.querySelectorAll("[data-password-toggle]").forEach((btn) => {
+  const targetId = btn.getAttribute("data-password-toggle");
+  if (!targetId) return;
+  const input = document.getElementById(targetId);
+  if (!input) return;
+  updatePasswordToggleButton(btn, input.type === "text");
+  btn.addEventListener("click", () => {
+    const nowVisible = input.type === "password";
+    input.type = nowVisible ? "text" : "password";
+    updatePasswordToggleButton(btn, nowVisible);
+  });
+});
 
 /** Firebase Console link for this project (Authentication → Sign-in method) */
 const FIREBASE_AUTH_CONSOLE_URL = "https://console.firebase.google.com/project/smilegame-f0d54/authentication/providers";
@@ -353,6 +382,7 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = (emailInput && emailInput.value) ? emailInput.value.trim() : "";
   const password = (passwordInput && passwordInput.value) ? passwordInput.value : "";
+  const confirmPassword = (confirmPasswordInput && confirmPasswordInput.value) ? confirmPasswordInput.value : "";
 
   if (!email || !password) {
     showMessage("Please fill in email and password.");
@@ -361,6 +391,10 @@ form.addEventListener("submit", async (e) => {
 
   if (isSignUp && !isSignupPasswordAcceptable(password)) {
     showMessage(`Password must be at least ${SIGNUP_PASSWORD_MIN_LEN} characters.`);
+    return;
+  }
+  if (isSignUp && password !== confirmPassword) {
+    showMessage("Passwords do not match.");
     return;
   }
 
@@ -1524,6 +1558,7 @@ function initGame() {
 onAuthChange((user) => {
   currentUser = user;
   if (user) {
+    document.body.classList.remove("auth-screen");
     void syncMysqlUser(user);
     loginFormEl.classList.add("hidden");
     gameAreaEl.classList.add("visible");
@@ -1536,6 +1571,7 @@ onAuthChange((user) => {
     if (profileAvatarDisplay) profileAvatarDisplay.textContent = avatar;
     initGame();
   } else {
+    document.body.classList.add("auth-screen");
     loginFormEl.classList.remove("hidden");
     gameAreaEl.classList.remove("visible");
   }
